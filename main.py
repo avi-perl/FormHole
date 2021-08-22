@@ -30,8 +30,10 @@ class Metadata(BaseModel):
     Metadata related to this item.
     Used for filtering get requests.
     """
-    test_record: bool = False
-    soft_delete: bool = False
+    id: Optional[str]
+    created: datetime
+    last_updated: Optional[datetime]
+    deleted: bool = False
 
 
 class CreateItem(BaseModel):
@@ -42,7 +44,6 @@ class CreateItem(BaseModel):
     model: str
     version: float = 0
     data: dict
-    metadata: Optional[Metadata]
 
     class Config:
         schema_extra = {
@@ -52,10 +53,6 @@ class CreateItem(BaseModel):
                 "data": {
                     "key": "value"
                 },
-                "metadata": {
-                    "test_record": False,
-                    "soft_delete": False
-                }
             }
         }
 
@@ -68,19 +65,13 @@ class UpdateItem(BaseModel):
     model: Optional[str]
     version: Optional[float] = 0
     data: Optional[dict]
-    metadata: Optional[Metadata]
 
     class Config:
         schema_extra = {
             "example": {
-                "model": "SomeModel",
-                "version": 1.0,
                 "data": {
-                    "key": "value"
-                },
-                "metadata": {
-                    "test_record": False,
-                    "soft_delete": False
+                    "key": "value",
+                    "new_key": "new_value",
                 }
             }
         }
@@ -93,48 +84,27 @@ class Item(BaseModel):
     Only model, version, data, and the metadata values can be edited by a user. All other fields are reserved and
     updated automatically.
     """
-    created: datetime
-    last_updated: Optional[datetime]
     model: str
     version: float
     data: dict
     metadata: Optional[Metadata]
 
-    class Config:
-        schema_extra = {
-            "example": {
-                "created": datetime.now(),
-                "last_updated": None,
-                "model": "SomeModel",
-                "version": 1.0,
-                "data": {
-                    "key": "value"
-                },
-                "metadata": {
-                    "test_record": False,
-                    "soft_delete": False
-                }
-            }
-        }
-
 
 @app.get("/items", response_model=Dict[str, Item], tags=["All Items"], response_model_exclude_unset=True)
-async def list_all_items(include_soft_delete: bool = False, exclude_test_records: bool = True):
+async def list_all_items(show_deleted: bool = False):
     """
     **List all items in the database**
 
     Pass optional options for filtering data based on metadata values.
     """
     items = {_id: Item(**item) for (_id, item) in db.get_all().items()}
-    if not include_soft_delete:
-        items = {_id: item for (_id, item) in items.items() if not item.metadata.soft_delete}
-    if exclude_test_records:
-        items = {_id: item for (_id, item) in items.items() if not item.metadata.test_record}
+    if not show_deleted:
+        items = {_id: item for (_id, item) in items.items() if not item.metadata.deleted}
     return items
 
 
 @app.get("/item/{item_id}", response_model=Item, tags=["All Items"], response_model_exclude_unset=True)
-async def get_item(item_id: str, show_soft_delete: bool = False):
+async def get_item(item_id: str, show_deleted: bool = False):
     """
     **Return a specific item from the database by its ID**
 
@@ -142,12 +112,13 @@ async def get_item(item_id: str, show_soft_delete: bool = False):
     """
     item = db.get_by_id(item_id)
 
-    if not show_soft_delete and item and Item(**item).metadata.soft_delete:
+    if not show_deleted and item and Item(**item).metadata.deleted:
         item = None
 
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
 
+    item.get("metadata").update({"id": item_id})
     return item
 
 
@@ -155,15 +126,16 @@ async def get_item(item_id: str, show_soft_delete: bool = False):
 async def create_item(item: CreateItem):
     """
     **Create a new item in the Database**
-
-    The created datetime will be added automatically.
     """
     item = Item(
-        id=0,  # This will be replaced by the db engine
         created=datetime.now(),
-        **item.dict()
+        **item.dict(),
+        metadata=Metadata(
+            created=datetime.now()
+        )
     )
     _id = db.add(jsonable_encoder(item))
+    item.metadata.id = _id
     return item
 
 
@@ -181,14 +153,13 @@ async def replace_item(item_id: str, create_item: CreateItem):
     if not stored_item_data:
         raise HTTPException(status_code=400, detail="Item does not exist")
 
-    stored_item_model = Item(**stored_item_data)
     item = Item(
-        id=item_id,
-        created=stored_item_model.created,
-        last_updated=datetime.now(),
         **create_item.dict(),
+        metadata=Item(**stored_item_data).metadata
     )
+    item.metadata.last_updated = datetime.now()
     db.update_by_id(item_id, jsonable_encoder(item))
+    item.metadata.id = item_id
     return item
 
 
@@ -203,15 +174,17 @@ async def partial_update_item(item_id: str, update_item: UpdateItem):
 
     This will cause the last_updated datetime to be updated.
     """
+    # TODO patch data as well?
     stored_item_data = db.get_by_id(item_id)
     if not stored_item_data:
         raise HTTPException(status_code=400, detail="Item does not exist")
 
     stored_item_model = Item(**stored_item_data)
-    stored_item_model.last_updated = datetime.now()
+    stored_item_model.metadata.last_updated = datetime.now()
     update_data = update_item.dict(exclude_unset=True)
     updated_item = stored_item_model.copy(update=update_data)
     db.update_by_id(item_id, jsonable_encoder(updated_item))
+    updated_item.metadata.id = item_id
     return updated_item
 
 
@@ -221,7 +194,7 @@ def delete_item(item_id: str, permanent: bool = False):
     **Delete an item from the DB**
 
     Pass optional options to control if the data should be removed from the database entirely or if the record should
-    be marked deleted by setting the metadata "soft_delete" value to true.
+    be marked deleted by setting the metadata "deleted" value to true.
     """
     stored_item_data = db.get_by_id(item_id)
     if not stored_item_data:
@@ -231,21 +204,25 @@ def delete_item(item_id: str, permanent: bool = False):
         db.delete_by_id(item_id)
     else:
         stored_item_model = Item(**stored_item_data)
-        stored_item_model.last_updated = datetime.now()
-        stored_item_model.metadata.soft_delete = True
+        stored_item_model.metadata.last_updated = datetime.now()
+        stored_item_model.metadata.deleted = True
         db.update_by_id(item_id, jsonable_encoder(stored_item_model))
     return {}
 
 
 @app.get("/model/{model_name}", response_model=Dict[str, Item], tags=["Models"], response_model_exclude_unset=True)
-def list_model_items(model_name: str):
+def list_model_items(model_name: str, show_deleted: bool = False):
     """
     **List all items of a particular model**
 
     Selects and lists all models of a particular type.
     """
     all_items = {_id: Item(**item) for (_id, item) in db.get_by_model(model_name).items()}
-    return {_id: item for (_id, item) in all_items.items() if not item.metadata.soft_delete}
+
+    if not show_deleted:
+        items = {_id: item for (_id, item) in all_items.items() if not item.metadata.deleted}
+
+    return all_items
 
 
 @app.post("/model/{model_name}", tags=["Models"], response_model_exclude_unset=True)
@@ -264,9 +241,11 @@ def create_model_item(model_name: str, post_data: dict, version: float = 0):
     item = Item(
         model=model_name,
         version=0,
-        created=datetime.now(),
         data=post_data,
-        metadata=Metadata(),
+        metadata=Metadata(
+            created=datetime.now()
+        ),
     )
-    db.add(jsonable_encoder(item))
+    _id = db.add(jsonable_encoder(item))
+    item.metadata.id = _id
     return item

@@ -1,41 +1,26 @@
 {
     "5d545327-3596-45e0-9d50-bcd76721b4bd": {
-        "created": "2021-08-22T04:37:55.912841",
-        "last_updated": null,
         "model": "WelcomeMessage",
         "version": 1.0,
         "data": {
             "message": "Hello Yossi \ud83d\udc4b"
         },
         "metadata": {
-            "test_record": false,
-            "soft_delete": false
+            "deleted": false,
+            "created": "2021-08-22T10:16:01.205519",
+            "last_updated": null
         }
     },
-    "7a94df6a-a8b7-41c3-8e2b-75ca496b8e62": {
-        "created": "2021-08-22T04:38:20.111671",
-        "last_updated": null,
-        "model": "WelcomeMessage",
+    "0f52f5e2-ca10-4bb4-8ae7-68233dbe2883": {
+        "model": "DeletedModel",
         "version": 1.0,
         "data": {
-            "message": "I've been deleted."
+            "message": "I've been deleted!"
         },
         "metadata": {
-            "test_record": false,
-            "soft_delete": true
-        }
-    },
-    "b336086c-7cd5-45d2-9aed-85b717cac97e": {
-        "created": "2021-08-22T04:38:37.795153",
-        "last_updated": null,
-        "model": "WelcomeMessage",
-        "version": 1.0,
-        "data": {
-            "message": "I am a test record."
-        },
-        "metadata": {
-            "test_record": true,
-            "soft_delete": false
+            "created": "2021-08-22T11:15:21.578248",
+            "last_updated": "2021-08-22T11:16:24.093868",
+            "deleted": true
         }
     }
 }

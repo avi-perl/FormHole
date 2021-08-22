@@ -28,7 +28,7 @@ Also, I don't want to pay for jotform. Sorry 🤷🏻‍♂️
       model: "SomeModelName",        // Required field, specifies the type of data.
       version: 1.0,                  // Optional field, specifies version information about the data.
       data: {...},                   // Schema free data
-      metadata: {...}                // Data stored automatically, created datetime, delete status, etc. 
+      metadata: {...}                // Data about data, created datetime, delete status, etc. 
     }
     ```
 
