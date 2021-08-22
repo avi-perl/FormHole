@@ -12,38 +12,32 @@ def override_get_db():
         "non_deleted_record": {
             "model": "WelcomeMessage",
             "version": 1.0,
-            "data": {
-                "message": "Hello Yossi \ud83d\udc4b"
-            },
+            "data": {"message": "Hello Yossi \ud83d\udc4b"},
             "metadata": {
                 "deleted": False,
                 "created": "2021-08-22T10:16:01.205519",
-                "last_updated": None
-            }
+                "last_updated": None,
+            },
         },
         "deleted_record": {
             "model": "DeletedModel",
             "version": 1.0,
-            "data": {
-                "message": "I've been deleted!"
-            },
+            "data": {"message": "I've been deleted!"},
             "metadata": {
                 "created": "2021-08-22T11:15:21.578248",
                 "last_updated": "2021-08-22T11:16:24.093868",
-                "deleted": True
-            }
+                "deleted": True,
+            },
         },
         "deleted_welcome_message": {
             "model": "WelcomeMessage",
             "version": 1.0,
-            "data": {
-                "message": "Hello Avi \ud83d\udc4b"
-            },
+            "data": {"message": "Hello Avi \ud83d\udc4b"},
             "metadata": {
                 "deleted": True,
                 "created": "2021-09-22T10:16:01.205519",
-                "last_updated": "2021-10-22T10:16:01.205519"
-            }
+                "last_updated": "2021-10-22T10:16:01.205519",
+            },
         },
     }
 
@@ -104,13 +98,9 @@ def test_item_yes_deleted():
 
 
 def test_post():
-    response = client.post("/", json={
-        "model": "SomeModel",
-        "version": 1,
-        "data": {
-            "key": "value"
-        }
-    })
+    response = client.post(
+        "/", json={"model": "SomeModel", "version": 1, "data": {"key": "value"}}
+    )
     item = response.json()
     assert response.status_code == 200
     assert isinstance(item["metadata"]["id"], str)
@@ -121,13 +111,14 @@ def test_put():
     assert response.status_code == 200
     old_item = response.json()
 
-    response = client.put("/item/non_deleted_record", json={
-        "model": "SomeNewModel",
-        "version": 5.6,
-        "data": {
-            "new_key": "new_value"
-        }
-    })
+    response = client.put(
+        "/item/non_deleted_record",
+        json={
+            "model": "SomeNewModel",
+            "version": 5.6,
+            "data": {"new_key": "new_value"},
+        },
+    )
     assert response.status_code == 200
     new_item = response.json()
 
@@ -155,9 +146,12 @@ def test_patch():
     assert response.status_code == 200
     old_item = response.json()
 
-    response = client.patch("/item/non_deleted_record", json={
-        "model": "SomeNewModelName",
-    })
+    response = client.patch(
+        "/item/non_deleted_record",
+        json={
+            "model": "SomeNewModelName",
+        },
+    )
     assert response.status_code == 200
     new_item = response.json()
 

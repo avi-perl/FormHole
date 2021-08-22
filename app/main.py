@@ -22,7 +22,7 @@ app = FastAPI(
         {
             "name": "Models",
             "description": "Perform actions on specific model types.",
-        }
+        },
     ],
     docs_url=settings.docs_url,
     redoc_url=settings.redoc_url,
@@ -34,6 +34,7 @@ class Metadata(BaseModel):
     Metadata related to this item.
     Used for filtering get requests.
     """
+
     id: Optional[str]
     created: datetime
     last_updated: Optional[datetime]
@@ -45,6 +46,7 @@ class CreateItem(BaseModel):
     Model for data that can be passed when creating an item.
     The "created" timestamp is added when saving the record.
     """
+
     model: str
     version: float = 0
     data: dict
@@ -54,9 +56,7 @@ class CreateItem(BaseModel):
             "example": {
                 "model": "SomeModel",
                 "version": 1.0,
-                "data": {
-                    "key": "value"
-                },
+                "data": {"key": "value"},
             }
         }
 
@@ -66,6 +66,7 @@ class UpdateItem(BaseModel):
     Model for data that can be passed when creating an item.
     The "last_updated" timestamp is updated when saving the record.
     """
+
     model: Optional[str]
     version: Optional[float] = 0
     data: Optional[dict]
@@ -88,15 +89,23 @@ class Item(BaseModel):
     Only model, version, data, and the metadata values can be edited by a user. All other fields are reserved and
     updated automatically.
     """
+
     model: str
     version: float
     data: dict
     metadata: Optional[Metadata]
 
 
-@app.get("/items", response_model=Dict[str, Item], tags=["All Items"], response_model_exclude_unset=True)
-async def list_all_items(show_deleted: bool = settings.list_all_items_show_deleted_default,
-                         db: DBProxy = Depends(get_db)):
+@app.get(
+    "/items",
+    response_model=Dict[str, Item],
+    tags=["All Items"],
+    response_model_exclude_unset=True,
+)
+async def list_all_items(
+    show_deleted: bool = settings.list_all_items_show_deleted_default,
+    db: DBProxy = Depends(get_db),
+):
     """
     **List all items in the database**
 
@@ -104,13 +113,23 @@ async def list_all_items(show_deleted: bool = settings.list_all_items_show_delet
     """
     items = {_id: Item(**item) for (_id, item) in db.get_all().items()}
     if not show_deleted:
-        items = {_id: item for (_id, item) in items.items() if not item.metadata.deleted}
+        items = {
+            _id: item for (_id, item) in items.items() if not item.metadata.deleted
+        }
     return items
 
 
-@app.get("/item/{item_id}", response_model=Item, tags=["All Items"], response_model_exclude_unset=True)
-async def get_item(item_id: str, show_deleted: bool = settings.get_item_show_deleted_default,
-                   db: DBProxy = Depends(get_db)):
+@app.get(
+    "/item/{item_id}",
+    response_model=Item,
+    tags=["All Items"],
+    response_model_exclude_unset=True,
+)
+async def get_item(
+    item_id: str,
+    show_deleted: bool = settings.get_item_show_deleted_default,
+    db: DBProxy = Depends(get_db),
+):
     """
     **Return a specific item from the database by its ID**
 
@@ -128,25 +147,30 @@ async def get_item(item_id: str, show_deleted: bool = settings.get_item_show_del
     return item
 
 
-@app.post("/", response_model=Item, tags=["All Items"], response_model_exclude_unset=True)
+@app.post(
+    "/", response_model=Item, tags=["All Items"], response_model_exclude_unset=True
+)
 async def create_item(item: CreateItem, db: DBProxy = Depends(get_db)):
     """
     **Create a new item in the Database**
     """
     item = Item(
-        created=datetime.now(),
-        **item.dict(),
-        metadata=Metadata(
-            created=datetime.now()
-        )
+        created=datetime.now(), **item.dict(), metadata=Metadata(created=datetime.now())
     )
     _id = db.add(jsonable_encoder(item))
     item.metadata.id = _id
     return item
 
 
-@app.put("/item/{item_id}", response_model=Item, tags=["All Items"], response_model_exclude_unset=True)
-async def replace_item(item_id: str, create_item: CreateItem, db: DBProxy = Depends(get_db)):
+@app.put(
+    "/item/{item_id}",
+    response_model=Item,
+    tags=["All Items"],
+    response_model_exclude_unset=True,
+)
+async def replace_item(
+    item_id: str, create_item: CreateItem, db: DBProxy = Depends(get_db)
+):
     """
     **Update an item in the Database**
 
@@ -159,18 +183,22 @@ async def replace_item(item_id: str, create_item: CreateItem, db: DBProxy = Depe
     if not stored_item_data:
         raise HTTPException(status_code=400, detail="Item does not exist")
 
-    item = Item(
-        **create_item.dict(),
-        metadata=Item(**stored_item_data).metadata
-    )
+    item = Item(**create_item.dict(), metadata=Item(**stored_item_data).metadata)
     item.metadata.last_updated = datetime.now()
     db.update_by_id(item_id, jsonable_encoder(item))
     item.metadata.id = item_id
     return item
 
 
-@app.patch("/item/{item_id}", response_model=Item, tags=["All Items"], response_model_exclude_unset=True)
-async def partial_update_item(item_id: str, update_item: UpdateItem, db: DBProxy = Depends(get_db)):
+@app.patch(
+    "/item/{item_id}",
+    response_model=Item,
+    tags=["All Items"],
+    response_model_exclude_unset=True,
+)
+async def partial_update_item(
+    item_id: str, update_item: UpdateItem, db: DBProxy = Depends(get_db)
+):
     """
     **Partial update an item in the Database**
 
@@ -195,7 +223,11 @@ async def partial_update_item(item_id: str, update_item: UpdateItem, db: DBProxy
 
 
 @app.delete("/item/{item_id}", tags=["All Items"])
-def delete_item(item_id: str, permanent: bool = settings.delete_item_permanent_default, db: DBProxy = Depends(get_db)):
+def delete_item(
+    item_id: str,
+    permanent: bool = settings.delete_item_permanent_default,
+    db: DBProxy = Depends(get_db),
+):
     """
     **Delete an item from the DB**
 
@@ -216,9 +248,17 @@ def delete_item(item_id: str, permanent: bool = settings.delete_item_permanent_d
     return {}
 
 
-@app.get("/model/{model_name}", response_model=Dict[str, Item], tags=["Models"], response_model_exclude_unset=True)
-def list_model_items(model_name: str, show_deleted: bool = settings.list_model_items_show_deleted_default,
-                     db: DBProxy = Depends(get_db)):
+@app.get(
+    "/model/{model_name}",
+    response_model=Dict[str, Item],
+    tags=["Models"],
+    response_model_exclude_unset=True,
+)
+def list_model_items(
+    model_name: str,
+    show_deleted: bool = settings.list_model_items_show_deleted_default,
+    db: DBProxy = Depends(get_db),
+):
     """
     **List all items of a particular model**
 
@@ -227,14 +267,20 @@ def list_model_items(model_name: str, show_deleted: bool = settings.list_model_i
     items = {_id: Item(**item) for (_id, item) in db.get_by_model(model_name).items()}
 
     if not show_deleted:
-        items = {_id: item for (_id, item) in items.items() if not item.metadata.deleted}
+        items = {
+            _id: item for (_id, item) in items.items() if not item.metadata.deleted
+        }
 
     return items
 
 
 @app.post("/model/{model_name}", tags=["Models"], response_model_exclude_unset=True)
-def create_model_item(model_name: str, post_data: dict, version: float = settings.create_model_item_version_default,
-                      db: DBProxy = Depends(get_db)):
+def create_model_item(
+    model_name: str,
+    post_data: dict,
+    version: float = settings.create_model_item_version_default,
+    db: DBProxy = Depends(get_db),
+):
     """
     **Create an item with the model name in the URL**
 
@@ -250,9 +296,7 @@ def create_model_item(model_name: str, post_data: dict, version: float = setting
         model=model_name,
         version=version,
         data=post_data,
-        metadata=Metadata(
-            created=datetime.now()
-        ),
+        metadata=Metadata(created=datetime.now()),
     )
     _id = db.add(jsonable_encoder(item))
     item.metadata.id = _id

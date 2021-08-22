@@ -6,10 +6,13 @@ from pysondb import DB
 
 class DBProxy:
     """Proxy class to communicate with the DB"""
+
     def __init__(self, name: str):
         self.name = name
 
-        self.db = DB(["created", "last_updated", "model", "version", "data", "metadata"], False)
+        self.db = DB(
+            ["created", "last_updated", "model", "version", "data", "metadata"], False
+        )
         self.db.load(self.db_filename)
         self.db.set_id_generator(self.uuid_generator)
 
