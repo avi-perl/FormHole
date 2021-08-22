@@ -5,7 +5,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 
-from DBProxy import DBProxy
+from .DBProxy import DBProxy
 
 app = FastAPI(
     title="Post Hole",
