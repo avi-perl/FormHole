@@ -10,8 +10,10 @@ from .dependencies import get_db
 from .config import settings
 
 app = FastAPI(
+    debug=settings.debug,
     title=settings.site_title,
     description=settings.site_description,
+    openapi_url=settings.openapi_url,
     openapi_tags=[
         {
             "name": "All Items",
@@ -22,6 +24,8 @@ app = FastAPI(
             "description": "Perform actions on specific model types.",
         }
     ],
+    docs_url=settings.docs_url,
+    redoc_url=settings.redoc_url,
 )
 
 
