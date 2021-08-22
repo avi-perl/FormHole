@@ -1,0 +1,41 @@
+{
+    "5d545327-3596-45e0-9d50-bcd76721b4bd": {
+        "created": "2021-08-22T04:37:55.912841",
+        "last_updated": null,
+        "model": "WelcomeMessage",
+        "version": 1.0,
+        "data": {
+            "message": "Hello Yossi \ud83d\udc4b"
+        },
+        "metadata": {
+            "test_record": false,
+            "soft_delete": false
+        }
+    },
+    "7a94df6a-a8b7-41c3-8e2b-75ca496b8e62": {
+        "created": "2021-08-22T04:38:20.111671",
+        "last_updated": null,
+        "model": "WelcomeMessage",
+        "version": 1.0,
+        "data": {
+            "message": "I've been deleted."
+        },
+        "metadata": {
+            "test_record": false,
+            "soft_delete": true
+        }
+    },
+    "b336086c-7cd5-45d2-9aed-85b717cac97e": {
+        "created": "2021-08-22T04:38:37.795153",
+        "last_updated": null,
+        "model": "WelcomeMessage",
+        "version": 1.0,
+        "data": {
+            "message": "I am a test record."
+        },
+        "metadata": {
+            "test_record": true,
+            "soft_delete": false
+        }
+    }
+}
