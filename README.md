@@ -25,10 +25,10 @@ Also, I don't want to pay for jotform. Sorry 🤷🏻‍♂️
 
     ```jsx
     {
-      model: "SomeModelName",               // Required field, specifies the type of data.
-      version: 1.0,                         // Optional field, specifies version information about the data.
-      data: {...},                          // Schema free data
-      metadata: {...}                       // Data stored automatically, such as created datetime, delete status, etc. 
+      model: "SomeModelName",        // Required field, specifies the type of data.
+      version: 1.0,                  // Optional field, specifies version information about the data.
+      data: {...},                   // Schema free data
+      metadata: {...}                // Data stored automatically, such as created datetime, delete status, etc. 
     }
     ```
 
