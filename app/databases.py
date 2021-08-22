@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, List
 import uuid
 
 from pysondb import DB
@@ -18,6 +18,9 @@ class DBProxy:
         _id = self.db.add(data)
         self.save()
         return _id
+
+    def add_many(self, data: List[Dict[str, Any]]):
+        self.db.add_many(data)
 
     def get_all(self):
         return self.db.get_all()

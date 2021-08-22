@@ -1,3 +1,4 @@
 /venv-windows/
 /.idea
 db.json
+/test_db.json
