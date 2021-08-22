@@ -13,7 +13,7 @@ basic CRUD, and implementing basic security (eventually).
 
 ### TL;DR
 
-There's are million apps out there such as jotform where you can rapidly create forms, but I'm a developer and I want to
+There's are a million apps out there such as jotform where you can rapidly create forms, but I'm a developer and I want to
 rapidly create feature full forms myself. This project is a light backend to do all the basic stuff so I can focus on
 the form.
 
