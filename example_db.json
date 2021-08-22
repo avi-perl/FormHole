@@ -1,0 +1,26 @@
+{
+    "5d545327-3596-45e0-9d50-bcd76721b4bd": {
+        "model": "WelcomeMessage",
+        "version": 1.0,
+        "data": {
+            "message": "Hello Yossi \ud83d\udc4b"
+        },
+        "metadata": {
+            "deleted": false,
+            "created": "2021-08-22T10:16:01.205519",
+            "last_updated": null
+        }
+    },
+    "0f52f5e2-ca10-4bb4-8ae7-68233dbe2883": {
+        "model": "DeletedModel",
+        "version": 1.0,
+        "data": {
+            "message": "I've been deleted!"
+        },
+        "metadata": {
+            "created": "2021-08-22T11:15:21.578248",
+            "last_updated": "2021-08-22T11:16:24.093868",
+            "deleted": true
+        }
+    }
+}

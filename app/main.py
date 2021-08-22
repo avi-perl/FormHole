@@ -6,6 +6,7 @@ from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 
 from .DBProxy import DBProxy
+from .config import settings
 
 app = FastAPI(
     title="Post Hole",
@@ -22,7 +23,7 @@ app = FastAPI(
         }
     ]
 )
-db = DBProxy("db", ["created", "last_updated", "model", "version", "data", "metadata"])
+db = DBProxy(settings.db_name, ["created", "last_updated", "model", "version", "data", "metadata"])
 
 
 class Metadata(BaseModel):
