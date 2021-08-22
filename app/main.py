@@ -10,9 +10,8 @@ from .dependencies import get_db
 from .config import settings
 
 app = FastAPI(
-    title="Post Hole",
-    description="Post Hole is a catch all API that can accept data of any shape, save it to a database, and allows you "
-                "to perform CRUD actions on those records.",
+    title=settings.site_title,
+    description=settings.site_description,
     openapi_tags=[
         {
             "name": "All Items",
@@ -24,7 +23,6 @@ app = FastAPI(
         }
     ],
 )
-# db = DBProxy(settings.db_name, ["created", "last_updated", "model", "version", "data", "metadata"])
 
 
 class Metadata(BaseModel):
@@ -93,7 +91,8 @@ class Item(BaseModel):
 
 
 @app.get("/items", response_model=Dict[str, Item], tags=["All Items"], response_model_exclude_unset=True)
-async def list_all_items(show_deleted: bool = False, db: DBProxy = Depends(get_db)):
+async def list_all_items(show_deleted: bool = settings.list_all_items_show_deleted_default,
+                         db: DBProxy = Depends(get_db)):
     """
     **List all items in the database**
 
@@ -106,7 +105,8 @@ async def list_all_items(show_deleted: bool = False, db: DBProxy = Depends(get_d
 
 
 @app.get("/item/{item_id}", response_model=Item, tags=["All Items"], response_model_exclude_unset=True)
-async def get_item(item_id: str, show_deleted: bool = False, db: DBProxy = Depends(get_db)):
+async def get_item(item_id: str, show_deleted: bool = settings.get_item_show_deleted_default,
+                   db: DBProxy = Depends(get_db)):
     """
     **Return a specific item from the database by its ID**
 
@@ -191,7 +191,7 @@ async def partial_update_item(item_id: str, update_item: UpdateItem, db: DBProxy
 
 
 @app.delete("/item/{item_id}", tags=["All Items"])
-def delete_item(item_id: str, permanent: bool = False, db: DBProxy = Depends(get_db)):
+def delete_item(item_id: str, permanent: bool = settings.delete_item_permanent_default, db: DBProxy = Depends(get_db)):
     """
     **Delete an item from the DB**
 
@@ -213,7 +213,8 @@ def delete_item(item_id: str, permanent: bool = False, db: DBProxy = Depends(get
 
 
 @app.get("/model/{model_name}", response_model=Dict[str, Item], tags=["Models"], response_model_exclude_unset=True)
-def list_model_items(model_name: str, show_deleted: bool = False, db: DBProxy = Depends(get_db)):
+def list_model_items(model_name: str, show_deleted: bool = settings.list_model_items_show_deleted_default,
+                     db: DBProxy = Depends(get_db)):
     """
     **List all items of a particular model**
 
@@ -228,7 +229,8 @@ def list_model_items(model_name: str, show_deleted: bool = False, db: DBProxy = 
 
 
 @app.post("/model/{model_name}", tags=["Models"], response_model_exclude_unset=True)
-def create_model_item(model_name: str, post_data: dict, version: float = 0, db: DBProxy = Depends(get_db)):
+def create_model_item(model_name: str, post_data: dict, version: float = settings.create_model_item_version_default,
+                      db: DBProxy = Depends(get_db)):
     """
     **Create an item with the model name in the URL**
 

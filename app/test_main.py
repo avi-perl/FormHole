@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 
 from fastapi.testclient import TestClient
 
@@ -51,7 +50,7 @@ def override_get_db():
     with open("test_db.json", "w") as fp:
         json.dump(test_data, fp)
 
-    db = DBProxy("test_db", [])
+    db = DBProxy("test_db")
     return db
 
 
