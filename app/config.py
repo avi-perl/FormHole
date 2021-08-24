@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     aws_access_key_id: str = None
     aws_secret_access_key: str = None
     s3_bucket_name: str = None
-    s3_db_key: str = db_name + ".json"
+    s3_db_key: str = "post-hole-db.json"
 
     class Config:
         env_file = f'{os.environ.get("environment", "production")}.env'
