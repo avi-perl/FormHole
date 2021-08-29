@@ -20,14 +20,8 @@ class Settings(BaseSettings):
     update_item_update_deleted_default: bool = False
     create_model_item_version_default: float = 0
 
-    db_name: str = "db"
-    db_type: str = None
-
-    # s3
-    aws_access_key_id: str = None
-    aws_secret_access_key: str = None
-    s3_bucket_name: str = None
-    s3_db_key: str = "post-hole-db.json"
+    sqlite_file_name = "database.db"
+    database_url: str = f"sqlite:///{sqlite_file_name}"
 
     class Config:
         env_file = f'{os.environ.get("environment", "production")}.env'
