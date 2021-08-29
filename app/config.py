@@ -3,6 +3,7 @@ from pydantic import BaseSettings
 
 
 class Settings(BaseSettings):
+    # Fast API settings
     debug: bool = False
     site_title: str = "Post Hole"
     site_description: str = (
@@ -13,6 +14,15 @@ class Settings(BaseSettings):
     docs_url: str = "/docs"
     redoc_url: str = "/redoc"
 
+    # Disable specific endpoint URLs
+    list_items_enabled: bool = True
+    read_item_enabled: bool = True
+    create_item_enabled: bool = True
+    delete_item_enabled: bool = True
+    read_model_items_enabled: bool = True
+    create_model_item_enabled: bool = True
+
+    # Set setting defaults
     list_items_show_deleted_default: bool = False
     read_item_show_deleted_default: bool = False
     delete_item_permanent_default: bool = False
@@ -20,6 +30,7 @@ class Settings(BaseSettings):
     update_item_update_deleted_default: bool = False
     create_model_item_version_default: float = 0
 
+    # Database settings
     sqlite_file_name = "database.db"
     database_url: str = f"sqlite:///{sqlite_file_name}"
 
