@@ -6,7 +6,7 @@ from .config import settings
 # This is not supported by SQL Alchemy. Updating it here makes deployment easy for users.
 database_url = settings.database_url
 if database_url.split(":")[0] == "postgres":
-    database_url = f"postgresql:{database_url.split(':')[1]}"
+    database_url = f"postgresql:{database_url[9:]}"
 
 # check_same_thread is a sqlite specific setting
 if database_url.split(":")[0] == "sqlite":
@@ -14,4 +14,4 @@ if database_url.split(":")[0] == "sqlite":
 else:
     connect_args = {}
 
-engine = create_engine(database_url, echo=True, connect_args=connect_args)
+engine = create_engine(database_url, echo=settings.debug, connect_args=connect_args)
