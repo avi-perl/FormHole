@@ -71,6 +71,12 @@ As a developer, I'd prefer to develop forms completely independently of a servic
 
 ## Wish List
  - [ ] User accounts.
+ - [ ] Email notifications on form submission.
  - [ ] History feature tracking changes to a record over time.
  - [ ] Stand-alone 100% static UI project for automatic viewing and editing of records.
  - [ ] Example application script using this project.
+ - [ ] Scalability features
+   - For example, if your dataset is public and may receive lots of traffic, if we cache the data somewhere like S3, 
+   you could point a URL to this cached file (using AWS API Gateway as an example) and allow massive amounts of reading
+   without the PostHole application getting used at all. This could make for an extremely scalable and free solution 
+   when creating and editing records is infrequent. 
