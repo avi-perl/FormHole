@@ -1,4 +1,4 @@
-from sqlmodel import create_engine
+from sqlmodel import SQLModel, create_engine
 
 from .config import settings
 
@@ -15,3 +15,7 @@ else:
     connect_args = {}
 
 engine = create_engine(database_url, echo=settings.debug, connect_args=connect_args)
+
+
+def create_db_and_tables():
+    SQLModel.metadata.create_all(engine)
