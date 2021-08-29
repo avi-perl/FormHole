@@ -39,10 +39,7 @@ test_item = Item(
     created=datetime.now(),
 )
 deleted_test_item = Item(
-    model="TestModel",
-    data={"key": "value"},
-    created=datetime.now(),
-    deleted=True
+    model="TestModel", data={"key": "value"}, created=datetime.now(), deleted=True
 )
 
 
@@ -117,9 +114,7 @@ def test_read_item_show_deleted(session: Session, client: TestClient):
 
 def test_create_item(client: TestClient):
     post_data = {"model": "SomeModel", "version": 1, "data": {"key": "value"}}
-    response = client.post(
-        "/", json=post_data
-    )
+    response = client.post("/", json=post_data)
     item = response.json()
 
     assert response.status_code == 200
@@ -130,14 +125,19 @@ def test_create_item(client: TestClient):
     assert item["created"] is not None
     assert item["last_updated"] is None
     assert not item["deleted"]
-    assert isinstance(datetime.strptime(item["created"], "%Y-%m-%dT%H:%M:%S.%f"), datetime)
+    assert isinstance(
+        datetime.strptime(item["created"], "%Y-%m-%dT%H:%M:%S.%f"), datetime
+    )
 
 
 def test_create_item_deleted(client: TestClient):
-    post_data = {"model": "SomeModel", "version": 1, "data": {"key": "value"}, "deleted": True}
-    response = client.post(
-        "/", json=post_data
-    )
+    post_data = {
+        "model": "SomeModel",
+        "version": 1,
+        "data": {"key": "value"},
+        "deleted": True,
+    }
+    response = client.post("/", json=post_data)
     item = response.json()
 
     assert response.status_code == 200
@@ -148,7 +148,9 @@ def test_create_item_deleted(client: TestClient):
     assert item["created"] is not None
     assert item["last_updated"] is None
     assert item["deleted"]
-    assert isinstance(datetime.strptime(item["created"], "%Y-%m-%dT%H:%M:%S.%f"), datetime)
+    assert isinstance(
+        datetime.strptime(item["created"], "%Y-%m-%dT%H:%M:%S.%f"), datetime
+    )
 
 
 def test_delete_soft(session: Session, client: TestClient):
@@ -157,7 +159,7 @@ def test_delete_soft(session: Session, client: TestClient):
 
     response = client.delete("/item/1", params={"permanent": False})
     assert response.status_code == 200
-    assert response.json() == {'ok': True}
+    assert response.json() == {"ok": True}
 
     response = client.get("/item/1", params={"show_deleted": False})
     assert response.status_code == 404
@@ -174,7 +176,7 @@ def test_delete_permanent(session: Session, client: TestClient):
 
     response = client.delete("/item/1", params={"permanent": True})
     assert response.status_code == 200
-    assert response.json() == {'ok': True}
+    assert response.json() == {"ok": True}
 
     response = client.get("/item/1", params={"show_deleted": False})
     assert response.status_code == 404
@@ -232,7 +234,7 @@ def test_update_item_update_deleted(session: Session, client: TestClient):
         json={
             "deleted": False,
         },
-        params={"update_deleted": True}
+        params={"update_deleted": True},
     )
     assert response.status_code == 200
     new_item = response.json()
@@ -277,9 +279,7 @@ def test_read_models_show_deleted(session: Session, client: TestClient):
 
 def test_create_model_item(session: Session, client: TestClient):
     post_data = {"key": "value"}
-    response = client.post(
-        f"/model/{test_item.model}", json=post_data
-    )
+    response = client.post(f"/model/{test_item.model}", json=post_data)
     item = response.json()
 
     assert response.status_code == 200
@@ -290,7 +290,9 @@ def test_create_model_item(session: Session, client: TestClient):
     assert item["created"] is not None
     assert item["last_updated"] is None
     assert not item["deleted"]
-    assert isinstance(datetime.strptime(item["created"], "%Y-%m-%dT%H:%M:%S.%f"), datetime)
+    assert isinstance(
+        datetime.strptime(item["created"], "%Y-%m-%dT%H:%M:%S.%f"), datetime
+    )
 
 
 def test_create_model_item_include_version(session: Session, client: TestClient):
@@ -308,5 +310,6 @@ def test_create_model_item_include_version(session: Session, client: TestClient)
     assert item["created"] is not None
     assert item["last_updated"] is None
     assert not item["deleted"]
-    assert isinstance(datetime.strptime(item["created"], "%Y-%m-%dT%H:%M:%S.%f"), datetime)
-
+    assert isinstance(
+        datetime.strptime(item["created"], "%Y-%m-%dT%H:%M:%S.%f"), datetime
+    )

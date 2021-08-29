@@ -56,7 +56,7 @@ class ItemRead(ItemBase):
     id: int
     created: datetime
     last_updated: Optional[datetime]
-    
+
 
 class ItemUpdate(SQLModel):
     model: Optional[str]
@@ -78,7 +78,7 @@ class Item(ItemBase, table=True):
     last_updated: Optional[datetime]
     data: str
 
-    @validator('data', pre=True)
+    @validator("data", pre=True)
     def convert_data_dict_to_str(cls, v):
         """
         Convert data to a string when the class is initiated.
@@ -89,24 +89,27 @@ class Item(ItemBase, table=True):
 
 
 if settings.list_items_enabled:
+
     @app.get(
         "/items",
         response_model=List[ItemRead],
         tags=["All Items"],
     )
     async def list_items(
-            *,
-            session: Session = Depends(get_session),
-            show_deleted: bool = settings.list_items_show_deleted_default,
-            offset: int = 0,
-            limit: int = Query(default=100, lte=100),
+        *,
+        session: Session = Depends(get_session),
+        show_deleted: bool = settings.list_items_show_deleted_default,
+        offset: int = 0,
+        limit: int = Query(default=100, lte=100),
     ):
         """
         **List all items in the database**
 
         Pass optional options for filtering data based on metadata values.
         """
-        query = select(Item) if show_deleted else select(Item).where(Item.deleted != True)
+        query = (
+            select(Item) if show_deleted else select(Item).where(Item.deleted != True)
+        )
         items = []
 
         # Hack: Convert the string instances of data to dicts so the response_model will work.
@@ -119,15 +122,17 @@ if settings.list_items_enabled:
 
 
 if settings.read_item_enabled:
+
     @app.get(
         "/item/{item_id}",
         response_model=ItemRead,
         tags=["All Items"],
     )
     async def read_item(
-            *, session: Session = Depends(get_session),
-            item_id: str,
-            show_deleted: bool = settings.read_item_show_deleted_default,
+        *,
+        session: Session = Depends(get_session),
+        item_id: str,
+        show_deleted: bool = settings.read_item_show_deleted_default,
     ):
         """
         **Return a specific item from the database by its ID**
@@ -148,6 +153,7 @@ if settings.read_item_enabled:
 
 
 if settings.create_item_enabled:
+
     @app.post("/", response_model=ItemRead, tags=["All Items"])
     async def create_item(*, session: Session = Depends(get_session), item: ItemCreate):
         """
@@ -171,16 +177,18 @@ if settings.create_item_enabled:
 
 
 if settings.update_item_enabled:
+
     @app.patch(
         "/item/{item_id}",
         response_model=ItemRead,
         tags=["All Items"],
     )
     async def update_item(
-            *, session: Session = Depends(get_session),
-            item_id: str,
-            item: ItemUpdate,
-            update_deleted: bool = settings.update_item_update_deleted_default,
+        *,
+        session: Session = Depends(get_session),
+        item_id: str,
+        item: ItemUpdate,
+        update_deleted: bool = settings.update_item_update_deleted_default,
     ):
         """
         **Partial update an item in the Database**
@@ -217,11 +225,13 @@ if settings.update_item_enabled:
 
 
 if settings.delete_item_enabled:
+
     @app.delete("/item/{item_id}", tags=["All Items"])
     async def delete_item(
-            *, session: Session = Depends(get_session),
-            item_id: str,
-            permanent: bool = settings.delete_item_permanent_default,
+        *,
+        session: Session = Depends(get_session),
+        item_id: str,
+        permanent: bool = settings.delete_item_permanent_default,
     ):
         """
         **Delete an item from the DB**
@@ -244,24 +254,28 @@ if settings.delete_item_enabled:
 
 
 if settings.read_model_items_enabled:
+
     @app.get(
         "/model/{model_name}",
         response_model=List[ItemRead],
         tags=["Models"],
     )
     async def read_model_items(
-            *, session: Session = Depends(get_session),
-            model_name: str,
-            show_deleted: bool = settings.read_model_items_show_deleted_default,
-            offset: int = 0,
-            limit: int = Query(default=100, lte=100),
+        *,
+        session: Session = Depends(get_session),
+        model_name: str,
+        show_deleted: bool = settings.read_model_items_show_deleted_default,
+        offset: int = 0,
+        limit: int = Query(default=100, lte=100),
     ):
         """
         **List all items of a particular model**
 
         Selects and lists all models of a particular type.
         """
-        query = select(Item) if show_deleted else select(Item).where(Item.deleted != True)
+        query = (
+            select(Item) if show_deleted else select(Item).where(Item.deleted != True)
+        )
 
         # Hack: Convert the string instances of data to dicts so the response_model will work.
         # TODO: Fix this.
@@ -274,13 +288,14 @@ if settings.read_model_items_enabled:
 
 
 if settings.create_model_item_enabled:
+
     @app.post("/model/{model_name}", tags=["Models"], response_model=ItemRead)
     async def create_model_item(
-            *,
-            session: Session = Depends(get_session),
-            model_name: str,
-            post_data: dict,
-            version: float = settings.create_model_item_version_default,
+        *,
+        session: Session = Depends(get_session),
+        model_name: str,
+        post_data: dict,
+        version: float = settings.create_model_item_version_default,
     ):
         """
         **Create an item with the model name in the URL**
@@ -294,10 +309,7 @@ if settings.create_model_item_enabled:
         The created datetime will be added automatically.
         """
         item = Item(
-            model=model_name,
-            version=version,
-            data=post_data,
-            created=datetime.now()
+            model=model_name, version=version, data=post_data, created=datetime.now()
         )
         session.add(item)
         session.commit()

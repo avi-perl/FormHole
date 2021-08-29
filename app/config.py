@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     list_items_enabled: bool = True
     read_item_enabled: bool = True
     create_item_enabled: bool = True
+    update_item_enabled: bool = True
     delete_item_enabled: bool = True
     read_model_items_enabled: bool = True
     create_model_item_enabled: bool = True
