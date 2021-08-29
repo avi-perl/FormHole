@@ -214,7 +214,7 @@ async def update_item(
 
 
 @app.delete("/item/{item_id}", tags=["All Items"])
-def delete_item(
+async def delete_item(
         *, session: Session = Depends(get_session),
         item_id: str,
         permanent: bool = settings.delete_item_permanent_default,
@@ -244,7 +244,7 @@ def delete_item(
     response_model=List[ItemRead],
     tags=["Models"],
 )
-def read_model_items(
+async def read_model_items(
         *, session: Session = Depends(get_session),
         model_name: str,
         show_deleted: bool = settings.read_model_items_show_deleted_default,
@@ -269,7 +269,7 @@ def read_model_items(
 
 
 @app.post("/model/{model_name}", tags=["Models"], response_model=ItemRead)
-def create_model_item(
+async def create_model_item(
         *,
         session: Session = Depends(get_session),
         model_name: str,
