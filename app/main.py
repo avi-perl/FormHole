@@ -1,10 +1,10 @@
+import json
 from typing import Optional, Dict, List
 from datetime import datetime
 
-import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
-from pydantic import BaseModel
+from pydantic import validator
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 
 from .dependencies import engine, get_session
@@ -44,7 +44,7 @@ def on_startup():
 class ItemBase(SQLModel):
     model: str
     version: float = 0
-    # data: dict
+    data: dict
     deleted: bool = False
 
 
@@ -56,12 +56,12 @@ class ItemRead(ItemBase):
     id: int
     created: datetime
     last_updated: Optional[datetime]
-
+    
 
 class ItemUpdate(SQLModel):
     model: Optional[str]
     version: Optional[float]
-    # data: Optional[dict]
+    data: Optional[dict]
     deleted: Optional[bool]
 
 
@@ -76,6 +76,16 @@ class Item(ItemBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     created: datetime
     last_updated: Optional[datetime]
+    data: str
+
+    @validator('data', pre=True)
+    def convert_data_dict_to_str(cls, v):
+        """
+        Convert data to a string when the class is initiated.
+        This is a temp hack to make saving data to the DB work.
+        TODO: Fix this.
+        """
+        return json.dumps(v)
 
 
 @app.get(
@@ -96,7 +106,14 @@ async def list_items(
     Pass optional options for filtering data based on metadata values.
     """
     query = select(Item) if show_deleted else select(Item).where(Item.deleted != True)
-    items = session.exec(query.offset(offset).limit(limit)).all()
+    items = []
+
+    # Hack: Convert the string instances of data to dicts so the response_model will work.
+    # TODO: Fix this.
+    for item in session.exec(query.offset(offset).limit(limit)).all():
+        item.data = json.loads(item.data)
+        items.append(item)
+
     return items
 
 
@@ -122,6 +139,9 @@ async def read_item(
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
 
+    # Hack: Convert the string instance of data to dict so the response_model will work.
+    # TODO: Fix this.
+    item.data = json.loads(item.data)
     return item
 
 
@@ -135,10 +155,15 @@ async def create_item(*, session: Session = Depends(get_session), item: ItemCrea
         version=item.version,
         created=datetime.now(),
         deleted=item.deleted,
+        data=item.data,
     )
     session.add(db_item)
     session.commit()
     session.refresh(db_item)
+
+    # Hack: Convert the string instance of data to dict so the response_model will work.
+    # TODO: Fix this.
+    db_item.data = json.loads(db_item.data)
     return db_item
 
 
@@ -171,11 +196,20 @@ async def update_item(
 
     item_data = item.dict(exclude_unset=True)
     for key, value in item_data.items():
+        # Hack: Convert the dict instance of data to a str so the Item can be put into the DB.
+        # This needs to be done here because the validator in Item is not called when using setattr.
+        # TODO: Fix this.
+        if key == "data":
+            value = json.dumps(value)
         setattr(db_item, key, value)
     db_item.last_updated = datetime.now()
     session.add(db_item)
     session.commit()
     session.refresh(db_item)
+
+    # Hack: Convert the string instances of data to dicts so the response_model will work.
+    # TODO: Fix this.
+    db_item.data = json.loads(db_item.data)
     return db_item
 
 
@@ -223,11 +257,18 @@ def read_model_items(
     Selects and lists all models of a particular type.
     """
     query = select(Item) if show_deleted else select(Item).where(Item.deleted != True)
-    model_items = session.exec(query.where(Item.model == model_name).offset(offset).limit(limit)).all()
+
+    # Hack: Convert the string instances of data to dicts so the response_model will work.
+    # TODO: Fix this.
+    model_items = []
+    for model_item in session.exec(query.offset(offset).limit(limit)).all():
+        model_item.data = json.loads(model_item.data)
+        model_items.append(model_item)
+
     return model_items
 
 
-@app.post("/model/{model_name}", tags=["Models"], response_model_exclude_unset=True)
+@app.post("/model/{model_name}", tags=["Models"], response_model=ItemRead)
 def create_model_item(
         *,
         session: Session = Depends(get_session),
@@ -249,10 +290,14 @@ def create_model_item(
     item = Item(
         model=model_name,
         version=version,
-        # data=post_data,
+        data=post_data,
         created=datetime.now()
     )
     session.add(item)
     session.commit()
     session.refresh(item)
+
+    # Hack: Convert the string instance of data to dict so the response_model will work.
+    # TODO: Fix this.
+    item.data = json.loads(item.data)
     return item
