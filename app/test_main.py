@@ -1,153 +1,195 @@
 import json
+from copy import deepcopy
+from datetime import datetime
 
+import pytest
 from fastapi.testclient import TestClient
+from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel.pool import StaticPool
 
-from .main import app
-from .dependencies import get_db
-from app.databases.DBProxy import DBProxy
-
-
-def override_get_db():
-    test_data = {
-        "non_deleted_record": {
-            "model": "WelcomeMessage",
-            "version": 1.0,
-            "data": {"message": "Hello Yossi \ud83d\udc4b"},
-            "metadata": {
-                "deleted": False,
-                "created": "2021-08-22T10:16:01.205519",
-                "last_updated": None,
-            },
-        },
-        "deleted_record": {
-            "model": "DeletedModel",
-            "version": 1.0,
-            "data": {"message": "I've been deleted!"},
-            "metadata": {
-                "created": "2021-08-22T11:15:21.578248",
-                "last_updated": "2021-08-22T11:16:24.093868",
-                "deleted": True,
-            },
-        },
-        "deleted_welcome_message": {
-            "model": "WelcomeMessage",
-            "version": 1.0,
-            "data": {"message": "Hello Avi \ud83d\udc4b"},
-            "metadata": {
-                "deleted": True,
-                "created": "2021-09-22T10:16:01.205519",
-                "last_updated": "2021-10-22T10:16:01.205519",
-            },
-        },
-    }
-
-    with open("test_db.json", "w") as fp:
-        json.dump(test_data, fp)
-
-    db = DBProxy("test_db")
-    return db
+from .main import app, Item
+from .dependencies import get_session
 
 
-app.dependency_overrides[get_db] = override_get_db
-client = TestClient(app)
+@pytest.fixture(name="session")
+def session_fixture():
+    engine = create_engine(
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
+    SQLModel.metadata.create_all(engine)
+    with Session(engine) as session:
+        yield session
 
 
-def test_items_no_show_deleted():
+@pytest.fixture(name="client")
+def client_fixture(session: Session):
+    def get_session_override():
+        return session
+
+    app.dependency_overrides[get_session] = get_session_override
+    client = TestClient(app)
+    yield client
+    app.dependency_overrides.clear()
+
+
+# test item that can be used by tests.
+test_item = Item(
+    model="TestModel",
+    data={"key": "value"},
+    created=datetime.now(),
+)
+deleted_test_item = Item(
+    model="TestModel",
+    data={"key": "value"},
+    created=datetime.now(),
+    deleted=True
+)
+
+
+def test_read_items_no_show_deleted(session: Session, client: TestClient):
+    session.add(deepcopy(test_item))
+    session.add(deepcopy(deleted_test_item))
+    session.commit()
+
     response = client.get("/items?show_deleted=false")
     items = response.json()
+
     assert response.status_code == 200
-    assert len(items) > 0
-    assert "non_deleted_record" in items.keys()
-    assert "deleted_record" not in items.keys()
+    assert len(items) == 1
+    assert not items[0].get("deleted")
 
 
-def test_items_show_deleted():
+def test_read_items_show_deleted(session: Session, client: TestClient):
+    session.add(deepcopy(test_item))
+    session.add(deepcopy(deleted_test_item))
+    session.commit()
+
     response = client.get("/items?show_deleted=true")
     items = response.json()
+
     assert response.status_code == 200
-    assert len(items) >= 2
-    assert "non_deleted_record" in items.keys()
-    assert "deleted_record" in items.keys()
+    assert len(items) == 2
+    assert not items[0].get("deleted")
+    assert items[1].get("deleted")
 
 
-def test_item():
-    response = client.get("/item/some_id_that_does_not_exist")
+def test_read_items_limit_offset(session: Session, client: TestClient):
+    session.add(deepcopy(test_item))
+    session.add(deepcopy(test_item))
+    session.add(deepcopy(test_item))
+    session.add(deepcopy(test_item))
+    session.add(deepcopy(test_item))
+    session.commit()
+
+    response = client.get("/items", params={"limit": 2, "offset": 1})
+    items = response.json()
+
+    assert response.status_code == 200
+    assert len(items) == 2
+    assert items[0].get("id") == 2
+    assert items[1].get("id") == 3
+
+
+def test_read_item(session: Session, client: TestClient):
+    session.add(deepcopy(test_item))
+    session.commit()
+
+    response = client.get("/item/2")
     assert response.status_code == 404
 
-    response = client.get("/item/non_deleted_record")
+    response = client.get("/item/1")
     assert response.status_code == 200
 
 
-def test_item_no_deleted():
-    response = client.get("/item/non_deleted_record?show_deleted=true")
-    item = response.json()
-    assert response.status_code == 200
-    assert item["metadata"]["id"] == "non_deleted_record"
-    assert item["metadata"]["deleted"] is False
+def test_read_item_show_deleted(session: Session, client: TestClient):
+    session.add(deepcopy(deleted_test_item))
+    session.commit()
 
-    response = client.get("/item/deleted_record?show_deleted=false")
+    response = client.get("/item/1", params={"show_deleted": False})
     assert response.status_code == 404
 
-
-def test_item_yes_deleted():
-    response = client.get("/item/deleted_record?show_deleted=true")
+    response = client.get("/item/1", params={"show_deleted": True})
     item = response.json()
+
     assert response.status_code == 200
-    assert item["metadata"]["id"] == "deleted_record"
-    assert item["metadata"]["deleted"] is True
+    assert item.get("deleted")
 
 
-def test_post():
+def test_create_item(client: TestClient):
+    post_data = {"model": "SomeModel", "version": 1, "data": {"key": "value"}}
     response = client.post(
-        "/", json={"model": "SomeModel", "version": 1, "data": {"key": "value"}}
+        "/", json=post_data
     )
     item = response.json()
+
     assert response.status_code == 200
-    assert isinstance(item["metadata"]["id"], str)
+    assert item["id"] == 1
+    assert item["model"] == post_data["model"]
+    assert item["version"] == post_data["version"]
+    assert item["data"] == post_data["data"]
+    assert item["created"] is not None
+    assert item["last_updated"] is None
+    assert not item["deleted"]
+    assert isinstance(datetime.strptime(item["created"], "%Y-%m-%dT%H:%M:%S.%f"), datetime)
 
 
-def test_put():
-    response = client.get("/item/non_deleted_record")
-    assert response.status_code == 200
-    old_item = response.json()
-
-    response = client.put(
-        "/item/non_deleted_record",
-        json={
-            "model": "SomeNewModel",
-            "version": 5.6,
-            "data": {"new_key": "new_value"},
-        },
+def test_create_item_deleted(client: TestClient):
+    post_data = {"model": "SomeModel", "version": 1, "data": {"key": "value"}, "deleted": True}
+    response = client.post(
+        "/", json=post_data
     )
+    item = response.json()
+
     assert response.status_code == 200
-    new_item = response.json()
+    assert item["id"] == 1
+    assert item["model"] == post_data["model"]
+    assert item["version"] == post_data["version"]
+    assert item["data"] == post_data["data"]
+    assert item["created"] is not None
+    assert item["last_updated"] is None
+    assert item["deleted"]
+    assert isinstance(datetime.strptime(item["created"], "%Y-%m-%dT%H:%M:%S.%f"), datetime)
 
-    assert old_item["model"] != new_item["model"]
-    assert old_item["version"] != new_item["version"]
-    assert old_item["data"] != new_item["data"]
-    assert old_item["metadata"]["last_updated"] != new_item["metadata"]["last_updated"]
-    assert new_item["metadata"]["last_updated"] is not None
 
+def test_delete_soft(session: Session, client: TestClient):
+    session.add(deepcopy(test_item))
+    session.commit()
 
-def test_delete_soft():
-    response = client.delete("/item/non_deleted_record?permanent=false")
+    response = client.delete("/item/1", params={"permanent": False})
     assert response.status_code == 200
-    assert response.json() == {}
+    assert response.json() == {'ok': True}
 
+    response = client.get("/item/1", params={"show_deleted": False})
+    assert response.status_code == 404
 
-def test_delete_permanent():
-    response = client.delete("/item/non_deleted_record?permanent=true")
+    response = client.get("/item/1", params={"show_deleted": True})
+    item = response.json()
     assert response.status_code == 200
-    assert response.json() == {}
+    assert item.get("deleted")
 
 
-def test_patch():
-    response = client.get("/item/non_deleted_record")
+def test_delete_permanent(session: Session, client: TestClient):
+    session.add(deepcopy(test_item))
+    session.commit()
+
+    response = client.delete("/item/1", params={"permanent": True})
     assert response.status_code == 200
-    old_item = response.json()
+    assert response.json() == {'ok': True}
+
+    response = client.get("/item/1", params={"show_deleted": False})
+    assert response.status_code == 404
+
+    response = client.get("/item/1", params={"show_deleted": True})
+    assert response.status_code == 404
+
+
+def test_update_item(session: Session, client: TestClient):
+    session.add(deepcopy(test_item))
+    session.commit()
+    old_item = deepcopy(test_item)
 
     response = client.patch(
-        "/item/non_deleted_record",
+        "/item/1",
         json={
             "model": "SomeNewModelName",
         },
@@ -155,43 +197,116 @@ def test_patch():
     assert response.status_code == 200
     new_item = response.json()
 
-    assert old_item["model"] != new_item["model"]
-    assert old_item["version"] == new_item["version"]
-    assert old_item["data"] == new_item["data"]
-    assert old_item["metadata"]["last_updated"] != new_item["metadata"]["last_updated"]
-    assert new_item["metadata"]["last_updated"] is not None
+    assert old_item != new_item
+    assert old_item.model != new_item["model"]
+    assert new_item["model"] == "SomeNewModelName"
+    assert old_item.version == new_item["version"]
+    assert json.loads(old_item.data) == json.loads(json.dumps(new_item["data"]))
+    assert old_item.last_updated != new_item["last_updated"]
+    assert old_item.last_updated is None
+    assert new_item["last_updated"] is not None
+    assert not old_item.deleted
+    assert not new_item["deleted"]
 
 
-def test_models_no_show_deleted():
-    response = client.get("/model/WelcomeMessage?show_deleted=false")
+def test_update_item_no_updating_deleted_item(session: Session, client: TestClient):
+    session.add(deepcopy(deleted_test_item))
+    session.commit()
+
+    response = client.patch(
+        "/item/1",
+        json={
+            "deleted": "true",
+        },
+    )
+    assert response.status_code == 404
+
+
+def test_update_item_update_deleted(session: Session, client: TestClient):
+    session.add(deepcopy(deleted_test_item))
+    session.commit()
+    old_item = deepcopy(deleted_test_item)
+
+    response = client.patch(
+        "/item/1",
+        json={
+            "deleted": False,
+        },
+        params={"update_deleted": True}
+    )
     assert response.status_code == 200
+    new_item = response.json()
+
+    assert old_item != new_item
+    assert old_item.model == new_item["model"]
+    assert old_item.version == new_item["version"]
+    assert json.loads(old_item.data) == json.loads(json.dumps(new_item["data"]))
+    assert old_item.last_updated != new_item["last_updated"]
+    assert old_item.last_updated is None
+    assert new_item["last_updated"] is not None
+    assert old_item.deleted
+    assert not new_item["deleted"]
+
+
+def test_read_models_no_show_deleted(session: Session, client: TestClient):
+    session.add(deepcopy(test_item))
+    session.add(deepcopy(deleted_test_item))
+    session.commit()
+
+    response = client.get(f"/model/{test_item.model}", params={"show_deleted": False})
     items = response.json()
-    assert "deleted_welcome_message" not in items.keys()
-    assert "non_deleted_record" in items.keys()
 
-
-def test_models_show_deleted():
-    response = client.get("/model/WelcomeMessage?show_deleted=true")
     assert response.status_code == 200
+    assert len(items) == 1
+    assert not items[0].get("deleted")
+
+
+def test_read_models_show_deleted(session: Session, client: TestClient):
+    session.add(deepcopy(test_item))
+    session.add(deepcopy(deleted_test_item))
+    session.commit()
+
+    response = client.get(f"/model/{test_item.model}", params={"show_deleted": True})
     items = response.json()
-    assert "deleted_welcome_message" in items.keys()
-    assert "non_deleted_record" in items.keys()
 
-
-def test_models_post():
-    data = {"some_random_key": "some_value"}
-    model_name = "RandomModel"
-    response = client.post(f"/model/{model_name}", json=data)
     assert response.status_code == 200
+    assert len(items) == 2
+    assert not items[0].get("deleted")
+    assert items[1].get("deleted")
+
+
+def test_create_model_item(session: Session, client: TestClient):
+    post_data = {"key": "value"}
+    response = client.post(
+        f"/model/{test_item.model}", json=post_data
+    )
     item = response.json()
-    assert item["data"] == data
-    assert item["model"] == model_name
 
-
-def test_models_post_with_version():
-    data = {"some_random_key": "some_value"}
-    model_name = "RandomModel"
-    response = client.post(f"/model/{model_name}?version=770", json=data)
     assert response.status_code == 200
+    assert item["id"] == 1
+    assert item["model"] == test_item.model
+    assert item["version"] == 0
+    assert item["data"] == post_data
+    assert item["created"] is not None
+    assert item["last_updated"] is None
+    assert not item["deleted"]
+    assert isinstance(datetime.strptime(item["created"], "%Y-%m-%dT%H:%M:%S.%f"), datetime)
+
+
+def test_create_model_item_include_version(session: Session, client: TestClient):
+    post_data = {"key": "value"}
+    response = client.post(
+        f"/model/{test_item.model}", json=post_data, params={"version": 770.5}
+    )
     item = response.json()
-    assert item["version"] == 770
+
+    assert response.status_code == 200
+    assert item["id"] == 1
+    assert item["model"] == test_item.model
+    assert item["version"] == 770.5
+    assert item["data"] == post_data
+    assert item["created"] is not None
+    assert item["last_updated"] is None
+    assert not item["deleted"]
+    assert isinstance(datetime.strptime(item["created"], "%Y-%m-%dT%H:%M:%S.%f"), datetime)
+

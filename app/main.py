@@ -133,7 +133,7 @@ async def read_item(
     Pass an optional option to show an item that is marked as deleted.
     """
     item = session.get(Item, item_id)
-    if not show_deleted and item.deleted:
+    if item and not show_deleted and item.deleted:
         item = None
 
     if not item:
