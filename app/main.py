@@ -1,17 +1,24 @@
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 from datetime import datetime
 
-from fastapi import Depends, FastAPI, HTTPException
+import uvicorn
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
+from sqlmodel import Field, Session, SQLModel, create_engine, select
 
-from .databases import DBProxy
-from .dependencies import get_db
+from .dependencies import engine, get_session
 from .config import settings
+
+
+def create_db_and_tables():
+    SQLModel.metadata.create_all(engine)
+
 
 app = FastAPI(
     debug=settings.debug,
     title=settings.site_title,
+    version="0.2.0",
     description=settings.site_description,
     openapi_url=settings.openapi_url,
     openapi_tags=[
@@ -29,60 +36,36 @@ app = FastAPI(
 )
 
 
-class Metadata(BaseModel):
-    """
-    Metadata related to this item.
-    Used for filtering get requests.
-    """
+@app.on_event("startup")
+def on_startup():
+    create_db_and_tables()
 
-    id: Optional[str]
-    created: datetime
-    last_updated: Optional[datetime]
+
+class ItemBase(SQLModel):
+    model: str
+    version: float = 0
+    # data: dict
     deleted: bool = False
 
 
-class CreateItem(BaseModel):
-    """
-    Model for data that can be passed when creating an item.
-    The "created" timestamp is added when saving the record.
-    """
-
-    model: str
-    version: float = 0
-    data: dict
-
-    class Config:
-        schema_extra = {
-            "example": {
-                "model": "SomeModel",
-                "version": 1.0,
-                "data": {"key": "value"},
-            }
-        }
+class ItemCreate(ItemBase):
+    pass
 
 
-class UpdateItem(BaseModel):
-    """
-    Model for data that can be passed when creating an item.
-    The "last_updated" timestamp is updated when saving the record.
-    """
+class ItemRead(ItemBase):
+    id: int
+    created: datetime
+    last_updated: Optional[datetime]
 
+
+class ItemUpdate(SQLModel):
     model: Optional[str]
-    version: Optional[float] = 0
-    data: Optional[dict]
-
-    class Config:
-        schema_extra = {
-            "example": {
-                "data": {
-                    "key": "value",
-                    "new_key": "new_value",
-                }
-            }
-        }
+    version: Optional[float]
+    # data: Optional[dict]
+    deleted: Optional[bool]
 
 
-class Item(BaseModel):
+class Item(ItemBase, table=True):
     """
     An item in the database.
 
@@ -90,114 +73,85 @@ class Item(BaseModel):
     updated automatically.
     """
 
-    model: str
-    version: float
-    data: dict
-    metadata: Optional[Metadata]
+    id: Optional[int] = Field(default=None, primary_key=True)
+    created: datetime
+    last_updated: Optional[datetime]
 
 
 @app.get(
     "/items",
-    response_model=Dict[str, Item],
+    response_model=List[ItemRead],
     tags=["All Items"],
-    response_model_exclude_unset=True,
 )
-async def list_all_items(
-    show_deleted: bool = settings.list_all_items_show_deleted_default,
-    db: DBProxy = Depends(get_db),
+async def list_items(
+        *,
+        session: Session = Depends(get_session),
+        show_deleted: bool = settings.list_items_show_deleted_default,
+        offset: int = 0,
+        limit: int = Query(default=100, lte=100),
 ):
     """
     **List all items in the database**
 
     Pass optional options for filtering data based on metadata values.
     """
-    items = {_id: Item(**item) for (_id, item) in db.get_all().items()}
-    if not show_deleted:
-        items = {
-            _id: item for (_id, item) in items.items() if not item.metadata.deleted
-        }
+    query = select(Item) if show_deleted else select(Item).where(Item.deleted != True)
+    items = session.exec(query.offset(offset).limit(limit)).all()
     return items
 
 
 @app.get(
     "/item/{item_id}",
-    response_model=Item,
+    response_model=ItemRead,
     tags=["All Items"],
-    response_model_exclude_unset=True,
 )
-async def get_item(
-    item_id: str,
-    show_deleted: bool = settings.get_item_show_deleted_default,
-    db: DBProxy = Depends(get_db),
+async def read_item(
+        *, session: Session = Depends(get_session),
+        item_id: str,
+        show_deleted: bool = settings.read_item_show_deleted_default,
 ):
     """
     **Return a specific item from the database by its ID**
 
     Pass an optional option to show an item that is marked as deleted.
     """
-    item = db.get_by_id(item_id)
-
-    if not show_deleted and item and Item(**item).metadata.deleted:
+    item = session.get(Item, item_id)
+    if not show_deleted and item.deleted:
         item = None
 
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
 
-    item.get("metadata").update({"id": item_id})
     return item
 
 
-@app.post(
-    "/", response_model=Item, tags=["All Items"], response_model_exclude_unset=True
-)
-async def create_item(item: CreateItem, db: DBProxy = Depends(get_db)):
+@app.post("/", response_model=ItemRead, tags=["All Items"])
+async def create_item(*, session: Session = Depends(get_session), item: ItemCreate):
     """
     **Create a new item in the Database**
     """
-    item = Item(
-        created=datetime.now(), **item.dict(), metadata=Metadata(created=datetime.now())
+    db_item = Item(
+        model=item.model,
+        version=item.version,
+        created=datetime.now(),
+        deleted=item.deleted,
     )
-    _id = db.add(jsonable_encoder(item))
-    item.metadata.id = _id
-    return item
-
-
-@app.put(
-    "/item/{item_id}",
-    response_model=Item,
-    tags=["All Items"],
-    response_model_exclude_unset=True,
-)
-async def replace_item(
-    item_id: str, create_item: CreateItem, db: DBProxy = Depends(get_db)
-):
-    """
-    **Update an item in the Database**
-
-    Note that put requests will replace all fields with the values passed or their defaults.
-    For partial updates, use PATCH.
-
-    This will cause the last_updated datetime to be updated.
-    """
-    stored_item_data = db.get_by_id(item_id)
-    if not stored_item_data:
-        raise HTTPException(status_code=400, detail="Item does not exist")
-
-    item = Item(**create_item.dict(), metadata=Item(**stored_item_data).metadata)
-    item.metadata.last_updated = datetime.now()
-    db.update_by_id(item_id, jsonable_encoder(item))
-    item.metadata.id = item_id
-    return item
+    session.add(db_item)
+    session.commit()
+    session.refresh(db_item)
+    return db_item
 
 
 @app.patch(
     "/item/{item_id}",
-    response_model=Item,
+    response_model=ItemRead,
     tags=["All Items"],
-    response_model_exclude_unset=True,
 )
-async def partial_update_item(
-    item_id: str, update_item: UpdateItem, db: DBProxy = Depends(get_db)
+async def update_item(
+        *, session: Session = Depends(get_session),
+        item_id: str,
+        item: ItemUpdate,
+        update_deleted: bool = settings.update_item_update_deleted_default,
 ):
     """
     **Partial update an item in the Database**
@@ -209,24 +163,27 @@ async def partial_update_item(
     This will cause the last_updated datetime to be updated.
     """
     # TODO patch data as well?
-    stored_item_data = db.get_by_id(item_id)
-    if not stored_item_data:
-        raise HTTPException(status_code=400, detail="Item does not exist")
+    db_item = session.get(Item, item_id)
+    if not update_deleted and db_item.deleted:
+        db_item = None
+    if not db_item:
+        raise HTTPException(status_code=404, detail="Item not found")
 
-    stored_item_model = Item(**stored_item_data)
-    stored_item_model.metadata.last_updated = datetime.now()
-    update_data = update_item.dict(exclude_unset=True)
-    updated_item = stored_item_model.copy(update=update_data)
-    db.update_by_id(item_id, jsonable_encoder(updated_item))
-    updated_item.metadata.id = item_id
-    return updated_item
+    item_data = item.dict(exclude_unset=True)
+    for key, value in item_data.items():
+        setattr(db_item, key, value)
+    db_item.last_updated = datetime.now()
+    session.add(db_item)
+    session.commit()
+    session.refresh(db_item)
+    return db_item
 
 
 @app.delete("/item/{item_id}", tags=["All Items"])
 def delete_item(
-    item_id: str,
-    permanent: bool = settings.delete_item_permanent_default,
-    db: DBProxy = Depends(get_db),
+        *, session: Session = Depends(get_session),
+        item_id: str,
+        permanent: bool = settings.delete_item_permanent_default,
 ):
     """
     **Delete an item from the DB**
@@ -234,52 +191,49 @@ def delete_item(
     Pass optional options to control if the data should be removed from the database entirely or if the record should
     be marked deleted by setting the metadata "deleted" value to true.
     """
-    stored_item_data = db.get_by_id(item_id)
-    if not stored_item_data:
-        raise HTTPException(status_code=400, detail="Item does not exist")
+    item = session.get(Item, item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
 
     if permanent:
-        db.delete_by_id(item_id)
+        session.delete(item)
     else:
-        stored_item_model = Item(**stored_item_data)
-        stored_item_model.metadata.last_updated = datetime.now()
-        stored_item_model.metadata.deleted = True
-        db.update_by_id(item_id, jsonable_encoder(stored_item_model))
-    return {}
+        item.deleted = True
+        item.last_updated = datetime.now()
+
+    session.commit()
+    return {"ok": True}
 
 
 @app.get(
     "/model/{model_name}",
-    response_model=Dict[str, Item],
+    response_model=List[ItemRead],
     tags=["Models"],
-    response_model_exclude_unset=True,
 )
-def list_model_items(
-    model_name: str,
-    show_deleted: bool = settings.list_model_items_show_deleted_default,
-    db: DBProxy = Depends(get_db),
+def read_model_items(
+        *, session: Session = Depends(get_session),
+        model_name: str,
+        show_deleted: bool = settings.read_model_items_show_deleted_default,
+        offset: int = 0,
+        limit: int = Query(default=100, lte=100),
 ):
     """
     **List all items of a particular model**
 
     Selects and lists all models of a particular type.
     """
-    items = {_id: Item(**item) for (_id, item) in db.get_by_model(model_name).items()}
-
-    if not show_deleted:
-        items = {
-            _id: item for (_id, item) in items.items() if not item.metadata.deleted
-        }
-
-    return items
+    query = select(Item) if show_deleted else select(Item).where(Item.deleted != True)
+    model_items = session.exec(query.where(Item.model == model_name).offset(offset).limit(limit)).all()
+    return model_items
 
 
 @app.post("/model/{model_name}", tags=["Models"], response_model_exclude_unset=True)
 def create_model_item(
-    model_name: str,
-    post_data: dict,
-    version: float = settings.create_model_item_version_default,
-    db: DBProxy = Depends(get_db),
+        *,
+        session: Session = Depends(get_session),
+        model_name: str,
+        post_data: dict,
+        version: float = settings.create_model_item_version_default,
 ):
     """
     **Create an item with the model name in the URL**
@@ -295,9 +249,10 @@ def create_model_item(
     item = Item(
         model=model_name,
         version=version,
-        data=post_data,
-        metadata=Metadata(created=datetime.now()),
+        # data=post_data,
+        created=datetime.now()
     )
-    _id = db.add(jsonable_encoder(item))
-    item.metadata.id = _id
+    session.add(item)
+    session.commit()
+    session.refresh(item)
     return item

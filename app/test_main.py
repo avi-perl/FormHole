@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 from .main import app
 from .dependencies import get_db
-from .databases import DBProxy
+from app.databases.DBProxy import DBProxy
 
 
 def override_get_db():
