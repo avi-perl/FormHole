@@ -3,7 +3,7 @@ from typing import Optional, List
 from datetime import datetime
 
 from fastapi import Depends, HTTPException, Query, APIRouter
-from sqlmodel import Session, select
+from sqlmodel import Session, select, func, SQLModel
 
 from .items import Item, ItemRead
 from ..dependencies import engine, get_session
@@ -12,6 +12,48 @@ from ..config import settings
 router = APIRouter()
 
 
+class ModelMetadata(SQLModel):
+    model: str
+    count: int
+    oldest_timestamp: datetime
+    newest_timestamp: Optional[datetime]
+    versions: List[float]
+
+
+if settings.read_model_list_enabled:
+    @router.get("/list", response_model=List[ModelMetadata])
+    async def read_model_list(
+            *,
+            session: Session = Depends(get_session),
+    ):
+        """
+        **Get information about models**
+
+        Returns a list of models saved into the DB as well as some counts and metadata about the models saved.
+        """
+        statement = select(
+            Item.model,
+            func.count(Item.id),
+            func.min(Item.created).label("oldest_timestamp"),
+            func.max(Item.created).label("newest_timestamp"),
+            func.group_concat(Item.version.distinct()).label("versions"),
+        ).distinct().group_by(Item.model)
+        results = session.exec(statement)
+
+        model_metadata_list = []
+        for result in results:
+            model_metadata_list.append(
+                ModelMetadata(
+                    model=result.model,
+                    count=result.count,
+                    newest_timestamp=result.newest_timestamp,
+                    oldest_timestamp=result.oldest_timestamp,
+                    versions=result.versions.split(",")
+                )
+            )
+
+        return model_metadata_list
+
 if settings.read_model_items_enabled:
 
     @router.get(
@@ -19,12 +61,12 @@ if settings.read_model_items_enabled:
         response_model=List[ItemRead],
     )
     async def read_model_items(
-        *,
-        session: Session = Depends(get_session),
-        model_name: str,
-        show_deleted: bool = settings.read_model_items_show_deleted_default,
-        offset: int = 0,
-        limit: int = Query(default=100, lte=100),
+            *,
+            session: Session = Depends(get_session),
+            model_name: str,
+            show_deleted: bool = settings.read_model_items_show_deleted_default,
+            offset: int = 0,
+            limit: int = Query(default=100, lte=100),
     ):
         """
         **List all items of a particular model**
@@ -44,16 +86,14 @@ if settings.read_model_items_enabled:
 
         return model_items
 
-
 if settings.create_model_item_enabled:
-
     @router.post("/{model_name}", response_model=ItemRead)
     async def create_model_item(
-        *,
-        session: Session = Depends(get_session),
-        model_name: str,
-        post_data: dict,
-        version: float = settings.create_model_item_version_default,
+            *,
+            session: Session = Depends(get_session),
+            model_name: str,
+            post_data: dict,
+            version: float = settings.create_model_item_version_default,
     ):
         """
         **Create an item with the model name in the URL**

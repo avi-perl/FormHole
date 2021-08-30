@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     delete_item_enabled: bool = True
     read_model_items_enabled: bool = True
     create_model_item_enabled: bool = True
+    read_model_list_enabled: bool = True
 
     # Set setting defaults
     list_items_show_deleted_default: bool = False
