@@ -1,3 +1,4 @@
+import time
 from copy import deepcopy
 from datetime import datetime
 
@@ -79,3 +80,35 @@ def test_create_model_item_include_version(session: Session, client: TestClient)
     assert isinstance(
         datetime.strptime(item["created"], "%Y-%m-%dT%H:%M:%S.%f"), datetime
     )
+
+
+def test_read_model_list(session: Session, client: TestClient):
+    session.add(deepcopy(test_item))
+    session.add(deepcopy(test_item))
+
+    test_item_2 = deepcopy(test_item)
+    test_item_2.version = 1.0
+    session.add(test_item_2)
+
+    some_other_model = deepcopy(test_item)
+    some_other_model.model = "SomeOtherModel"
+    some_other_model.version = 770
+    session.add(some_other_model)
+    session.commit()
+
+    response = client.get(f"/model/list")
+    metadata = response.json()
+
+    assert response.status_code == 200
+    assert len(metadata) == 2
+
+    some_other_model_metadata = metadata[0]
+    assert some_other_model_metadata["count"] == 1
+    assert len(some_other_model_metadata["versions"]) == 1
+    assert some_other_model_metadata["versions"] == [770]
+
+    test_item_metadata = metadata[1]
+    assert test_item_metadata["count"] == 3
+    assert len(test_item_metadata["versions"]) == 2
+    assert test_item_metadata["versions"] == [0, 1.0]
+
