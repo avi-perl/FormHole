@@ -80,7 +80,7 @@ if settings.read_model_items_enabled:
         # Hack: Convert the string instances of data to dicts so the response_model will work.
         # TODO: Fix this.
         model_items = []
-        for model_item in session.exec(query.offset(offset).limit(limit)).all():
+        for model_item in session.exec(query.where(Item.model == model_name).offset(offset).limit(limit)).all():
             model_item.data = json.loads(model_item.data)
             model_items.append(model_item)
 

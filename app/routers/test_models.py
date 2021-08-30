@@ -17,6 +17,18 @@ deleted_test_item = Item(
 )
 
 
+def test_read_models_unknown_model(session: Session, client: TestClient):
+    session.add(deepcopy(test_item))
+    session.commit()
+
+    response = client.get(f"/model/SomeModelNotInTheDB")
+    items = response.json()
+
+    assert response.status_code == 200
+    assert len(items) == 0
+    assert items == []
+
+
 def test_read_models_no_show_deleted(session: Session, client: TestClient):
     session.add(deepcopy(test_item))
     session.add(deepcopy(deleted_test_item))
