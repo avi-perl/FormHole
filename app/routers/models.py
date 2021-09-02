@@ -17,6 +17,8 @@ router = APIRouter()
 class ModelMetadata(SQLModel):
     model: str
     count: int
+    delete_count: int
+    total_count: int
     oldest_timestamp: datetime
     newest_timestamp: Optional[datetime]
     versions: Dict[float, int]
@@ -36,10 +38,11 @@ if settings.read_model_list_enabled:
         statement = select(
             Item.model,
             func.count(Item.id),
+            func.total(Item.deleted).label("delete_count"),
             func.min(Item.created).label("oldest_timestamp"),
             func.max(Item.created).label("newest_timestamp"),
             func.group_concat(Item.version).label("versions"),
-        ).where(Item.deleted == False).distinct().group_by(Item.model)
+        ).distinct().group_by(Item.model)
         results = session.exec(statement)
 
         model_metadata_list = []
@@ -47,7 +50,9 @@ if settings.read_model_list_enabled:
             model_metadata_list.append(
                 ModelMetadata(
                     model=result.model,
-                    count=result.count,
+                    count=result.count - result.delete_count,
+                    delete_count=result.delete_count,
+                    total_count=result.count,
                     newest_timestamp=result.newest_timestamp,
                     oldest_timestamp=result.oldest_timestamp,
                     versions=collections.Counter(result.versions.split(","))

@@ -122,3 +122,24 @@ def test_read_model_list(session: Session, client: TestClient):
     assert test_item_metadata["count"] == 3
     assert len(test_item_metadata["versions"]) == 2
     assert test_item_metadata["versions"] == {'0.0': 2, '1.0': 1}
+
+
+def test_read_model_delete_count(session: Session, client: TestClient):
+    session.add(deepcopy(test_item))
+    session.add(deepcopy(test_item))
+    session.add(deepcopy(test_item))
+    session.commit()
+
+    response = client.delete("/item/1", params={"permanent": False})
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
+
+    response = client.get(f"/model/list")
+    metadata = response.json()
+
+    assert response.status_code == 200
+    assert len(metadata) == 1
+
+    assert metadata[0].get("count") == 2
+    assert metadata[0].get("delete_count") == 1
+    assert metadata[0].get("total_count") == 3
