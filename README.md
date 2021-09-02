@@ -3,6 +3,8 @@
 A restful API that allows for the rapid development of online forms by accepting unstructured data, enabling
 basic CRUD, and implementing basic security (eventually).
 
+[![Python application](https://github.com/avi-perl/PostHole/actions/workflows/python-app.yml/badge.svg)](https://github.com/avi-perl/PostHole/actions/workflows/python-app.yml)
+
 ---
 
 **Hosted:** https://post-hole.herokuapp.com/docs
