@@ -1,5 +1,5 @@
 import json
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import datetime
 
 from fastapi import Depends, HTTPException, Query, APIRouter
@@ -17,7 +17,7 @@ class ModelMetadata(SQLModel):
     count: int
     oldest_timestamp: datetime
     newest_timestamp: Optional[datetime]
-    versions: List[float]
+    versions: Dict[float, int]
 
 
 if settings.read_model_list_enabled:
@@ -36,19 +36,23 @@ if settings.read_model_list_enabled:
             func.count(Item.id),
             func.min(Item.created).label("oldest_timestamp"),
             func.max(Item.created).label("newest_timestamp"),
-            func.group_concat(Item.version.distinct()).label("versions"),
+            func.group_concat(Item.version).label("versions"),
         ).distinct().group_by(Item.model)
         results = session.exec(statement)
 
         model_metadata_list = []
         for result in results:
+            version_counts = {}
+            for version in result.versions.split(","):
+                version_counts[version] = version_counts[version] + 1 if version in version_counts else 1
+
             model_metadata_list.append(
                 ModelMetadata(
                     model=result.model,
                     count=result.count,
                     newest_timestamp=result.newest_timestamp,
                     oldest_timestamp=result.oldest_timestamp,
-                    versions=result.versions.split(",")
+                    versions=version_counts
                 )
             )
 
