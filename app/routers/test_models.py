@@ -117,10 +117,10 @@ def test_read_model_list(session: Session, client: TestClient):
     some_other_model_metadata = metadata[0]
     assert some_other_model_metadata["count"] == 1
     assert len(some_other_model_metadata["versions"]) == 1
-    assert some_other_model_metadata["versions"] == [770]
+    assert some_other_model_metadata["versions"] == {'770.0': 1}
 
     test_item_metadata = metadata[1]
     assert test_item_metadata["count"] == 3
     assert len(test_item_metadata["versions"]) == 2
-    assert test_item_metadata["versions"] == [0, 1.0]
+    assert test_item_metadata["versions"] == {'0.0': 2, '1.0': 1}
 
