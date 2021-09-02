@@ -4,9 +4,9 @@ from datetime import datetime
 
 from fastapi import Depends, HTTPException, Query, APIRouter
 from pydantic import validator
-from sqlmodel import Field, Session, SQLModel, create_engine, select
+from sqlmodel import Field, Session, SQLModel, select
 
-from ..dependencies import engine, get_session
+from ..dependencies import get_session
 from ..config import settings
 
 router = APIRouter()

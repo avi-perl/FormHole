@@ -3,12 +3,11 @@ from typing import Optional, List, Dict
 from datetime import datetime
 import collections
 
-from fastapi import Depends, HTTPException, Query, APIRouter, Form
-from starlette.requests import Request
+from fastapi import Depends, Query, APIRouter
 from sqlmodel import Session, select, func, SQLModel
 
 from .items import Item, ItemRead
-from ..dependencies import engine, get_session
+from ..dependencies import get_session
 from ..config import settings
 
 router = APIRouter()

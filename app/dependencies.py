@@ -1,6 +1,5 @@
 from sqlmodel import Session
 
-from .config import settings
 from .databases import engine
 
 

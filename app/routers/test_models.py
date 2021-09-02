@@ -20,7 +20,7 @@ def test_read_models_unknown_model(session: Session, client: TestClient):
     session.add(deepcopy(test_item))
     session.commit()
 
-    response = client.get(f"/model/SomeModelNotInTheDB")
+    response = client.get("/model/SomeModelNotInTheDB")
     items = response.json()
 
     assert response.status_code == 200
@@ -107,7 +107,7 @@ def test_read_model_list(session: Session, client: TestClient):
     session.add(some_other_model)
     session.commit()
 
-    response = client.get(f"/model/list")
+    response = client.get("/model/list")
     metadata = response.json()
 
     assert response.status_code == 200
@@ -134,7 +134,7 @@ def test_read_model_delete_count(session: Session, client: TestClient):
     assert response.status_code == 200
     assert response.json() == {"ok": True}
 
-    response = client.get(f"/model/list")
+    response = client.get("/model/list")
     metadata = response.json()
 
     assert response.status_code == 200
