@@ -146,7 +146,6 @@ if settings.form_create_enabled:
         - This will not be recognized: `<input type="email" />`
         """
         form_data = await request.form()
-        print(form_data)
         data = {k: v for k, v in form_data.items()}
 
         item = Item(
