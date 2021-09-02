@@ -124,3 +124,24 @@ def test_read_model_list(session: Session, client: TestClient):
     assert len(test_item_metadata["versions"]) == 2
     assert test_item_metadata["versions"] == {'0.0': 2, '1.0': 1}
 
+
+def test_create_model_from_form(client: TestClient):
+    form_data = {"FormField": "FormValue"}
+    response = client.post(
+        f"/model/form-create/{test_item.model}", data=form_data, params={"version": 770.5}
+    )
+    item = response.json()
+
+    assert response.status_code == 200
+    assert item["id"] == 1
+    assert item["model"] == test_item.model
+    assert item["version"] == 770.5
+    assert item["data"] == form_data
+    assert item["created"] is not None
+    assert item["last_updated"] is None
+    assert not item["deleted"]
+    assert isinstance(
+        datetime.strptime(item["created"], "%Y-%m-%dT%H:%M:%S.%f"), datetime
+    )
+
+
