@@ -18,7 +18,6 @@ if settings.form_create_enabled:
             session: Session = Depends(get_session),
             model_name: str,
             request: Request,
-            # file: UploadFile = File(...),
             version: float = settings.create_model_item_version_default,
     ):
         """
