@@ -39,7 +39,7 @@ if settings.read_model_list_enabled:
             func.min(Item.created).label("oldest_timestamp"),
             func.max(Item.created).label("newest_timestamp"),
             func.group_concat(Item.version).label("versions"),
-        ).distinct().group_by(Item.model)
+        ).where(Item.deleted == False).distinct().group_by(Item.model)
         results = session.exec(statement)
 
         model_metadata_list = []
