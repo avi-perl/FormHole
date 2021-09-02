@@ -132,14 +132,21 @@ if settings.form_create_enabled:
         """
         **Create an item by submitting form data**
 
-        This endpoint can be used as the "action" of a web form.
+        This endpoint can be used as the "action" of a properly configured web form.
 
         The model name specified in the URL will be used as the model name, and the optional version query param can be
         used to set the version being used.
 
-         All form data contained in the request is converted to a dict and used as the Item Data.
+        All form data contained in the request is converted to a dict and used as the Item Data.
+
+
+        ### Note:
+        Your form **must** have a "name" for each input.
+        - This will work: `<input name="email" type="email" />`
+        - This will not be recognized: `<input type="email" />`
         """
         form_data = await request.form()
+        print(form_data)
         data = {k: v for k, v in form_data.items()}
 
         item = Item(
