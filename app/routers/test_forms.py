@@ -22,5 +22,3 @@ def test_create_model_from_form(client: TestClient):
     assert isinstance(
         datetime.strptime(item["created"], "%Y-%m-%dT%H:%M:%S.%f"), datetime
     )
-
-

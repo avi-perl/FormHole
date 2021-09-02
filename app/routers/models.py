@@ -25,24 +25,29 @@ class ModelMetadata(SQLModel):
 
 
 if settings.read_model_list_enabled:
+
     @router.get("/list", response_model=List[ModelMetadata])
     async def read_model_list(
-            *,
-            session: Session = Depends(get_session),
+        *,
+        session: Session = Depends(get_session),
     ):
         """
         **Get information about models**
 
         Returns a list of models saved into the DB as well as some counts and metadata about the models saved.
         """
-        statement = select(
-            Item.model,
-            func.count(Item.id),
-            func.total(Item.deleted).label("delete_count"),
-            func.min(Item.created).label("oldest_timestamp"),
-            func.max(Item.created).label("newest_timestamp"),
-            func.group_concat(Item.version).label("versions"),
-        ).distinct().group_by(Item.model)
+        statement = (
+            select(
+                Item.model,
+                func.count(Item.id),
+                func.total(Item.deleted).label("delete_count"),
+                func.min(Item.created).label("oldest_timestamp"),
+                func.max(Item.created).label("newest_timestamp"),
+                func.group_concat(Item.version).label("versions"),
+            )
+            .distinct()
+            .group_by(Item.model)
+        )
         results = session.exec(statement)
 
         model_metadata_list = []
@@ -55,11 +60,12 @@ if settings.read_model_list_enabled:
                     total_count=result.count,
                     newest_timestamp=result.newest_timestamp,
                     oldest_timestamp=result.oldest_timestamp,
-                    versions=collections.Counter(result.versions.split(","))
+                    versions=collections.Counter(result.versions.split(",")),
                 )
             )
 
         return model_metadata_list
+
 
 if settings.read_model_items_enabled:
 
@@ -68,12 +74,12 @@ if settings.read_model_items_enabled:
         response_model=List[ItemRead],
     )
     async def read_model_items(
-            *,
-            session: Session = Depends(get_session),
-            model_name: str,
-            show_deleted: bool = settings.read_model_items_show_deleted_default,
-            offset: int = 0,
-            limit: int = Query(default=100, lte=100),
+        *,
+        session: Session = Depends(get_session),
+        model_name: str,
+        show_deleted: bool = settings.read_model_items_show_deleted_default,
+        offset: int = 0,
+        limit: int = Query(default=100, lte=100),
     ):
         """
         **List all items of a particular model**
@@ -87,20 +93,24 @@ if settings.read_model_items_enabled:
         # Hack: Convert the string instances of data to dicts so the response_model will work.
         # TODO: Fix this.
         model_items = []
-        for model_item in session.exec(query.where(Item.model == model_name).offset(offset).limit(limit)).all():
+        for model_item in session.exec(
+            query.where(Item.model == model_name).offset(offset).limit(limit)
+        ).all():
             model_item.data = json.loads(model_item.data)
             model_items.append(model_item)
 
         return model_items
 
+
 if settings.create_model_item_enabled:
+
     @router.post("/{model_name}", response_model=ItemRead)
     async def create_model_item(
-            *,
-            session: Session = Depends(get_session),
-            model_name: str,
-            post_data: dict,
-            version: float = settings.create_model_item_version_default,
+        *,
+        session: Session = Depends(get_session),
+        model_name: str,
+        post_data: dict,
+        version: float = settings.create_model_item_version_default,
     ):
         """
         **Create an item with the model name in the URL**

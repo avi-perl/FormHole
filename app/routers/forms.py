@@ -12,13 +12,14 @@ from ..config import settings
 router = APIRouter()
 
 if settings.form_create_enabled:
+
     @router.post("/{model_name}", response_model=ItemRead)
     async def create_model_from_form(
-            *,
-            session: Session = Depends(get_session),
-            model_name: str,
-            request: Request,
-            version: float = settings.create_model_item_version_default,
+        *,
+        session: Session = Depends(get_session),
+        model_name: str,
+        request: Request,
+        version: float = settings.create_model_item_version_default,
     ):
         """
         **Create an item by submitting form data**
