@@ -2,7 +2,7 @@ from fastapi import FastAPI
 
 from .databases import create_db_and_tables
 from .config import settings
-from .routers import items, models
+from .routers import items, models, forms
 
 app = FastAPI(
     debug=settings.debug,
@@ -19,6 +19,10 @@ app = FastAPI(
             "name": "Models",
             "description": "Perform actions on specific model types.",
         },
+        {
+            "name": "Forms",
+            "description": "Create Items by submitting a form.",
+        },
     ],
     docs_url=settings.docs_url,
     redoc_url=settings.redoc_url,
@@ -32,6 +36,11 @@ app.include_router(
     models.router,
     prefix="/model",
     tags=["Models"],
+)
+app.include_router(
+    forms.router,
+    prefix="/form",
+    tags=["Forms"],
 )
 
 
