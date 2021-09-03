@@ -22,6 +22,19 @@ class ModelMetadata(SQLModel):
     newest_timestamp: Optional[datetime]
     versions: Dict[float, int]
 
+    class Config:
+        schema_extra = {
+            "example": {
+                "model": "ContactForm",
+                "count": 4,
+                "delete_count": 3,
+                "total_count": 7,
+                "oldest_timestamp": "2021-08-29T06:23:15.004756",
+                "newest_timestamp": "2021-08-31T07:01:17.004883",
+                "versions": {"0.0": 1, "1.0": 6},
+            }
+        }
+
 
 if settings.read_model_list_enabled:
 

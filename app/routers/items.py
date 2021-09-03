@@ -22,11 +22,42 @@ class ItemBase(SQLModel):
 class ItemCreate(ItemBase):
     pass
 
+    class Config:
+        schema_extra = {
+            "example": {
+                "model": "ContactForm",
+                "version": 1.0,
+                "data": {
+                    "email": "avi@email.com",
+                    "subject": "Contact form example",
+                    "body": "This is an example of arbitrary data that can be stored in the data field.",
+                },
+                "deleted": False,
+            }
+        }
+
 
 class ItemRead(ItemBase):
     id: int
     created: datetime
     last_updated: Optional[datetime]
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "model": "ContactForm",
+                "version": 1.0,
+                "data": {
+                    "email": "avi@email.com",
+                    "subject": "Contact form example",
+                    "body": "This is an example of arbitrary data that can be stored in the data field.",
+                },
+                "deleted": False,
+                "id": 1,
+                "created": "2021-09-03T06:04:51.477Z",
+                "last_updated": None,
+            }
+        }
 
 
 class ItemUpdate(SQLModel):
@@ -34,6 +65,18 @@ class ItemUpdate(SQLModel):
     version: Optional[float]
     data: Optional[dict]
     deleted: Optional[bool]
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "model": "NewModelName",
+                "version": 1.1,
+                "data": {
+                    "key": "New value replacing the data currently stored.",
+                },
+                "deleted": False,
+            }
+        }
 
 
 class Item(ItemBase, table=True):
@@ -194,7 +237,7 @@ if settings.update_item_enabled:
 
 if settings.delete_item_enabled:
 
-    @router.delete("/item/{item_id}")
+    @router.delete("/item/{item_id}", response_model=dict)
     async def delete_item(
         *,
         session: Session = Depends(get_session),
