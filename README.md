@@ -26,7 +26,7 @@ As a developer, I'd prefer to develop forms completely independently of a servic
 4. 🤬 Deploy API into production.
 
 #### With PostHole
-1. 🥰 Create a web form, POST your form's data into a PostHole.
+1. 🥰 Create a web form, POST your form's data into a FormHole.
 
 # Highlights
 
