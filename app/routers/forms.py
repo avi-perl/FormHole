@@ -22,7 +22,7 @@ if settings.form_create_enabled:
         version: float = settings.create_model_item_version_default,
     ):
         """
-        **Create an item by submitting form data**
+        ## Create an item by submitting form data
 
         This endpoint can be used as the "action" of a properly configured web form.
 

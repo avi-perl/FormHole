@@ -44,7 +44,7 @@ if settings.read_model_list_enabled:
         session: Session = Depends(get_session),
     ):
         """
-        **Get information about models**
+        ## Get information about models
 
         Returns a list of models saved into the DB as well as some counts and metadata about the models saved.
         """
@@ -94,9 +94,10 @@ if settings.read_model_items_enabled:
         limit: int = Query(default=100, lte=100),
     ):
         """
-        **List all items of a particular model**
+        ## List all items of a particular model
 
-        Selects and lists all models of a particular type.
+        By default, items that are soft deleted are not returned, but passing the show_deleted parameter will cause
+        them to be returned.
         """
         query = (
             select(Item) if show_deleted else select(Item).where(Item.deleted != True)
@@ -125,13 +126,13 @@ if settings.create_model_item_enabled:
         version: float = settings.create_model_item_version_default,
     ):
         """
-        **Create an item with the model name in the URL**
+        ## Create an item with the model name in the URL
 
-        This endpoint is useful when you don't want to specify all the required fields required by the root POST endpoint.
-        Use this when you want to send a completely schema free body in your request.
+        This endpoint is useful when you don't want to specify all the required fields required by the root POST
+        endpoint. Use this when you want to send a completely schema free body in your request.
 
-        The model name specified in the URL will be used as the model name, and the optional version query param can be used
-        to set the version being used.
+        The model name specified in the URL will be used as the model name, and the optional version query param can be
+        used to set the version being used.
 
         The created datetime will be added automatically.
         """

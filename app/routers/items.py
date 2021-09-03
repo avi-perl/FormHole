@@ -116,9 +116,14 @@ if settings.list_items_enabled:
         limit: int = Query(default=100, lte=100),
     ):
         """
-        **List all items in the database**
+        ## List all items in the database
 
-        Pass optional options for filtering data based on metadata values.
+        Get a list of all items in the database.
+
+        By default, items that are soft deleted are not returned, but passing the show_deleted parameter will cause
+        them to be returned.
+
+        To get all items of a particular model, see the Models endpoints.
         """
         query = (
             select(Item) if show_deleted else select(Item).where(Item.deleted != True)
@@ -147,9 +152,10 @@ if settings.read_item_enabled:
         show_deleted: bool = settings.read_item_show_deleted_default,
     ):
         """
-        **Return a specific item from the database by its ID**
+        ## Return a specific item from the database by its ID
 
-        Pass an optional option to show an item that is marked as deleted.
+        By default, items that are soft deleted are not returned, but passing the show_deleted parameter will cause
+        them to be returned.
         """
         item = session.get(Item, item_id)
         if item and not show_deleted and item.deleted:
@@ -169,7 +175,12 @@ if settings.create_item_enabled:
     @router.post("/", response_model=ItemRead)
     async def create_item(*, session: Session = Depends(get_session), item: ItemCreate):
         """
-        **Create a new item in the Database**
+        ## Create a new item in the Database
+
+        Create a new item with a post request.
+
+        A simple post request can be made by putting a model name in the URL. See the Models endpoints.
+        Items can also be created by form, see the Forms endpoints.
         """
         db_item = Item(
             model=item.model,
@@ -202,7 +213,7 @@ if settings.update_item_enabled:
         update_deleted: bool = settings.update_item_update_deleted_default,
     ):
         """
-        **Partial update an item in the Database**
+        ## Partial update an item in the Database
 
         Note that patch requests will replace only fields passed leaving the rest with their current values.
         This does _not_ apply to the contents of "data".
@@ -245,10 +256,10 @@ if settings.delete_item_enabled:
         permanent: bool = settings.delete_item_permanent_default,
     ):
         """
-        **Delete an item from the DB**
+        ## Delete an item from the DB
 
-        Pass optional options to control if the data should be removed from the database entirely or if the record should
-        be marked deleted by setting the metadata "deleted" value to true.
+        Pass optional options to control if the data should be removed from the database entirely or if the record
+        should be marked deleted by setting the metadata "deleted" value to true.
         """
         item = session.get(Item, item_id)
         if not item:
