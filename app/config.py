@@ -1,4 +1,6 @@
 import os
+from typing import Optional
+
 from pydantic import BaseSettings
 
 
@@ -36,6 +38,15 @@ class Settings(BaseSettings):
     # Database settings
     sqlite_file_name = "database.db"
     database_url: str = f"sqlite:///{sqlite_file_name}"
+
+    # CORS Settings
+    cors_allow_origins: list = []
+    cors_allow_origin_regex: Optional[str]
+    cors_allow_methods: list = ['POST']
+    cors_allow_headers: list = []
+    cors_allow_credentials: bool = False
+    cors_expose_headers: list = []
+    cors_max_age: int = 600
 
     class Config:
         env_file = f'{os.environ.get("environment", "production")}.env'
